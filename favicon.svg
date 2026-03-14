@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#0d0d0d"/>
-  <path d="M16 2 L30 8 L30 22 Q30 30 16 31 Q2 30 2 22 L2 8 Z" fill="#b8922a"/>
-  <path d="M16 4 L28 9 L28 21 Q28 28 16 29 Q4 28 4 21 L4 9 Z" fill="#0d0d0d"/>
-  <path d="M4 9 L28 22 L28 21 L4 19 Z" fill="#9b1626" opacity="0.8"/>
-  <path d="M4 19 L28 22 L28 28 Q20 31 16 31 Q8 31 4 28 Z" fill="#9b1626"/>
-  <text x="10" y="18" font-family="serif" font-size="10" fill="#f0c96a" font-style="italic">CB</text>
-</svg>
