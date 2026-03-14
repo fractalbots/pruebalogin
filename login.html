@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Charles Babbage — Acceso</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --black:   #080808;
+    --black2:  #111111;
+    --black3:  #1a1a1a;
+    --red:     #9b1626;
+    --red2:    #c41e36;
+    --red3:    #e8223d;
+    --gold:    #b8922a;
+    --gold2:   #d4a942;
+    --gold3:   #f0c96a;
+    --gold4:   #fde68a;
+    --cream:   #fef9ef;
+    --white:   #ffffff;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--black);
+    overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  /* ── CANVAS BACKGROUND ─────────────────────────────── */
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ────────────────────────────────────────── */
+  .shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── LEFT PANEL ─────────────────────────────────────── */
+  .left {
+    flex: 1.15;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 52px 40px;
+    background: linear-gradient(145deg, rgba(9,9,9,0.97) 0%, rgba(80,8,18,0.92) 55%, rgba(9,9,9,0.97) 100%);
+    border-right: 1px solid rgba(212,169,66,0.18);
+  }
+
+  /* left diagonal overlay */
+  .left::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, transparent 40%, rgba(155,22,38,0.12) 100%),
+      repeating-linear-gradient(
+        -55deg,
+        transparent,
+        transparent 40px,
+        rgba(212,169,66,0.025) 40px,
+        rgba(212,169,66,0.025) 41px
+      );
+    pointer-events: none;
+  }
+
+  /* ── SCHOOL HEADER ─── */
+  .school-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    animation: fadeSlideDown 1s ease both;
+  }
+
+  .shield-wrap {
+    width: 68px;
+    height: 68px;
+    position: relative;
+    flex-shrink: 0;
+    animation: float3d 5s ease-in-out infinite;
+    transform-style: preserve-3d;
+    perspective: 600px;
+    filter: drop-shadow(0 0 18px rgba(212,169,66,0.5));
+  }
+
+  .shield-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .school-title { display: flex; flex-direction: column; }
+  .school-title span {
+    font-family: 'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.28em;
+    color: var(--gold2);
+    text-transform: uppercase;
+    opacity: 0.78;
+  }
+  .school-title h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--cream);
+    background: linear-gradient(90deg, var(--cream) 30%, var(--gold3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── MOTTO ─── */
+  .motto {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    animation: fadeSlideDown 1s 0.15s ease both;
+  }
+  .motto-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold) 70%, transparent); }
+  .motto-text {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--gold2);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  /* ── NEWS AREA ─── */
+  .news-section {
+    flex: 1;
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .news-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    animation: fadeSlideDown 1s 0.3s ease both;
+  }
+  .news-label .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red3); box-shadow: 0 0 10px var(--red3); animation: blink 2s infinite; }
+  .news-label span { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.22em; color: var(--gold2); text-transform: uppercase; }
+
+  .news-scroll-wrap {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* fade-out at bottom to hint there's more */
+  .news-scroll-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, rgba(10,3,5,0.92));
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .news-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: scroll;
+    height: 100%;
+    padding-right: 10px;
+    padding-bottom: 40px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,169,66,0.35) rgba(255,255,255,0.04);
+  }
+  .news-cards::-webkit-scrollbar { width: 4px; }
+  .news-cards::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 4px; }
+  .news-cards::-webkit-scrollbar-thumb { background: rgba(212,169,66,0.35); border-radius: 4px; }
+  .news-cards::-webkit-scrollbar-thumb:hover { background: rgba(212,169,66,0.6); }
+
+  /* scroll hint arrow */
+  .scroll-hint {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;
+    animation: bounceDown 1.5s ease-in-out infinite;
+  }
+  .scroll-hint span { font-size: 0.58rem; color: var(--gold2); letter-spacing: 0.1em; opacity: 0.6; text-transform: uppercase; }
+  .scroll-hint svg { opacity: 0.5; }
+
+  @keyframes bounceDown {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%       { transform: translateX(-50%) translateY(4px); }
+  }
+
+  .news-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(212,169,66,0.12);
+    border-left: 3px solid var(--gold);
+    border-radius: 2px 8px 8px 2px;
+    padding: 16px 18px;
+    cursor: default;
+    transition: all 0.35s ease;
+    animation: fadeSlideLeft 0.7s ease both;
+    overflow: hidden;
+  }
+  .news-card:nth-child(1) { animation-delay: 0.4s; }
+  .news-card:nth-child(2) { animation-delay: 0.55s; border-left-color: var(--red2); }
+  .news-card:nth-child(3) { animation-delay: 0.7s; }
+  .news-card:nth-child(4) { animation-delay: 0.85s; border-left-color: var(--red2); }
+
+  .news-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(212,169,66,0.07) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .news-card:hover { border-color: rgba(212,169,66,0.35); transform: translateX(4px); }
+  .news-card:hover::before { opacity: 1; }
+
+  .news-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold3);
+    margin-bottom: 6px;
+    opacity: 0.75;
+  }
+  .news-badge .icon { font-size: 0.75rem; }
+  .news-date { color: rgba(255,255,255,0.28); margin-left: auto; font-size: 0.6rem; }
+
+  .news-card h3 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--cream);
+    margin-bottom: 5px;
+    line-height: 1.3;
+  }
+  .news-card p {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.5;
+    font-family: 'Crimson Pro', serif;
+  }
+
+  /* ── FOOTER LEFT ─── */
+  .left-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(212,169,66,0.1);
+    animation: fadeSlideUp 1s 1s ease both;
+  }
+  .left-footer .info-item { display: flex; flex-direction: column; }
+  .left-footer .info-item span:first-child { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold2); opacity: 0.6; }
+  .left-footer .info-item span:last-child { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-top: 2px; }
+  .left-footer .steam-badges { display: flex; gap: 6px; }
+  .steam-badge {
+    padding: 3px 8px;
+    border: 1px solid rgba(212,169,66,0.2);
+    border-radius: 3px;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    color: var(--gold3);
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+
+  /* ── DIVIDER ────────────────────────────────────────── */
+  .divider {
+    width: 1px;
+    background: linear-gradient(180deg, transparent 5%, rgba(212,169,66,0.25) 30%, rgba(212,169,66,0.25) 70%, transparent 95%);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold2);
+    box-shadow: 0 0 12px var(--gold2);
+  }
+  .divider::before { top: 30%; }
+  .divider::after  { bottom: 30%; }
+
+  /* ── RIGHT PANEL ─────────────────────────────────────── */
+  .right {
+    width: 420px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 48px;
+    background: linear-gradient(160deg, rgba(12,12,12,0.98) 0%, rgba(20,6,8,0.98) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .right::before {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(155,22,38,0.12) 0%, transparent 70%);
+    top: -100px; right: -100px;
+    pointer-events: none;
+  }
+  .right::after {
+    content: '';
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(180,130,30,0.08) 0%, transparent 70%);
+    bottom: -80px; left: -80px;
+    pointer-events: none;
+  }
+
+  .login-box {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    animation: fadeSlideUp 1s 0.2s ease both;
+  }
+
+  /* ── SHIELD ICON ─── */
+  .login-shield {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: float3d 4s ease-in-out infinite;
+    filter: drop-shadow(0 4px 20px rgba(212,169,66,0.4));
+  }
+  .login-shield img {
+    width: 100%;
+    object-fit: contain;
+  }
+
+  .login-title {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .login-title h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--gold2), var(--gold4), var(--gold2));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+  }
+  .login-title p {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.32);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── ROLE SELECTOR ─── */
+  .role-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(212,169,66,0.1);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .role-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .role-btn .r-icon { font-size: 1rem; }
+  .role-btn:hover { color: rgba(255,255,255,0.65); }
+  .role-btn.active {
+    background: linear-gradient(135deg, rgba(155,22,38,0.6), rgba(100,14,24,0.8));
+    color: var(--gold3);
+    box-shadow: 0 2px 14px rgba(155,22,38,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  /* ── FORM ─── */
+  .form-group {
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .form-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold2);
+    margin-bottom: 8px;
+    opacity: 0.75;
+  }
+  .input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-icon {
+    position: absolute;
+    left: 14px;
+    font-size: 0.9rem;
+    color: rgba(212,169,66,0.4);
+    pointer-events: none;
+    transition: color 0.3s;
+  }
+  .form-input {
+    width: 100%;
+    padding: 13px 16px 13px 40px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(212,169,66,0.15);
+    border-radius: 8px;
+    color: var(--cream);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+  .form-input::placeholder { color: rgba(255,255,255,0.2); }
+  .form-input:focus {
+    border-color: rgba(212,169,66,0.45);
+    background: rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 3px rgba(212,169,66,0.08), 0 0 20px rgba(155,22,38,0.1);
+  }
+  .form-input:focus + .input-border { opacity: 1; }
+  .input-wrap:focus-within .input-icon { color: var(--gold2); }
+
+  .toggle-pass {
+    position: absolute;
+    right: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255,255,255,0.25);
+    font-size: 0.85rem;
+    transition: color 0.2s;
+    padding: 4px;
+  }
+  .toggle-pass:hover { color: var(--gold2); }
+
+  /* ── USER TYPE HINT ─── */
+  .user-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.28);
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    background: rgba(212,169,66,0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(212,169,66,0.08);
+  }
+  .user-hint span { color: var(--gold2); }
+
+  /* ── SUBMIT BUTTON ─── */
+  .btn-login {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #7d0f1e 0%, #9b1626 40%, #c41e36 100%);
+    color: var(--cream);
+    font-family: 'Cinzel', serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.35s ease;
+    box-shadow: 0 4px 24px rgba(155,22,38,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    margin-bottom: 20px;
+  }
+  .btn-login::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transition: left 0.5s ease;
+  }
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(155,22,38,0.55), inset 0 1px 0 rgba(255,255,255,0.15); }
+  .btn-login:hover::before { left: 100%; }
+  .btn-login:active { transform: translateY(0); }
+
+  /* gold accent line below button */
+  .gold-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin-bottom: 18px;
+    opacity: 0.25;
+  }
+
+  /* ── BOTTOM LINKS ─── */
+  .login-footer {
+    text-align: center;
+  }
+  .login-footer a {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.28);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    transition: color 0.2s;
+  }
+  .login-footer a:hover { color: var(--gold2); }
+
+  /* ── KEYFRAMES ──────────────────────────────────────── */
+  @keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideLeft {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float3d {
+    0%, 100% { transform: translateY(0) rotateY(0deg); }
+    25%       { transform: translateY(-6px) rotateY(5deg); }
+    75%       { transform: translateY(3px) rotateY(-4deg); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--red3); }
+    50%       { opacity: 0.4; box-shadow: 0 0 4px var(--red3); }
+  }
+  @keyframes scanLine {
+    0%   { top: -100%; }
+    100% { top: 200%; }
+  }
+
+  /* ── SCAN LINE EFFECT ─── */
+  .scan-effect {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  .scan-effect::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(212,169,66,0.2), transparent);
+    animation: scanLine 4s linear infinite;
+  }
+
+  /* ── RESPONSIVE ─────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .shell { flex-direction: column; overflow-y: auto; }
+    html, body { overflow: auto; }
+    .left {
+      padding: 32px 28px 28px;
+      border-right: none;
+      border-bottom: 1px solid rgba(212,169,66,0.18);
+      min-height: auto;
+    }
+    .news-cards { max-height: 260px; }
+    .divider { display: none; }
+    .right { width: 100%; padding: 40px 28px; }
+    .left-footer { flex-wrap: wrap; gap: 12px; }
+  }
+
+  @media (max-width: 480px) {
+    .left { padding: 24px 20px; }
+    .right { padding: 36px 20px; }
+    .school-title h1 { font-size: 1.2rem; }
+    .role-btn { font-size: 0.62rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="shell">
+
+  <!-- ═══════════════════════════════ LEFT PANEL ═══ -->
+  <section class="left">
+
+    <div>
+      <!-- School Header -->
+      <div class="school-header">
+        <div class="shield-wrap">
+          <!-- Using SVG placeholder shield since we can't embed the actual logo file -->
+          <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#c9a84c"/>
+                <stop offset="50%" stop-color="#f0c96a"/>
+                <stop offset="100%" stop-color="#b8922a"/>
+              </linearGradient>
+              <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#9b1626"/>
+                <stop offset="100%" stop-color="#c41e36"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 2 L95 20 L95 65 Q95 95 50 118 Q5 95 5 65 L5 20 Z" fill="url(#sg)" stroke="#c9a84c" stroke-width="1.5"/>
+            <path d="M50 8 L89 24 L89 64 Q89 91 50 112 Q11 91 11 64 L11 24 Z" fill="#0d0d0d"/>
+            <!-- diagonal split -->
+            <path d="M11 24 L89 80 L89 64 L11 55 Z" fill="url(#rg)" opacity="0.7"/>
+            <path d="M11 55 L89 80 L89 91 Q72 104 50 112 Q28 104 11 91 Z" fill="url(#rg)"/>
+            <!-- letters -->
+            <text x="28" y="58" font-family="serif" font-size="14" fill="#f0c96a" font-style="italic">CH</text>
+            <text x="56" y="45" font-family="serif" font-size="12" fill="#f0c96a" font-style="italic">B</text>
+            <!-- feather -->
+            <path d="M42 72 Q48 60 55 78 Q50 70 45 82 Q43 77 42 72Z" fill="#fff" opacity="0.85"/>
+            <!-- book top right -->
+            <rect x="62" y="24" width="16" height="12" rx="1" fill="none" stroke="#f0c96a" stroke-width="1.2" opacity="0.8"/>
+            <line x1="70" y1="24" x2="70" y2="36" stroke="#f0c96a" stroke-width="1" opacity="0.8"/>
+          </svg>
+        </div>
+        <div class="school-title">
+          <span>Colegio Particular Mixto</span>
+          <h1>Charles Babbage</h1>
+        </div>
+      </div>
+
+      <!-- Motto -->
+      <div class="motto">
+        <div class="motto-line"></div>
+        <span class="motto-text">Dios, Patria y Libertad</span>
+        <div class="motto-line"></div>
+      </div>
+
+      <!-- News Section -->
+      <div class="news-section">
+        <div class="news-label">
+          <div class="dot"></div>
+          <span>Noticias &amp; Novedades</span>
+        </div>
+
+        <div class="news-scroll-wrap">
+          <div class="news-cards" id="news-cards">
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">📢</span>Comunicado
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Inicio del Año Lectivo 2025–2026</h3>
+              <p>Las actividades académicas se reanudan con toda la energía y el compromiso que caracteriza a nuestra institución.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🏆</span>Logros
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Reconocimiento en Robótica STEAM</h3>
+              <p>Nuestros estudiantes obtuvieron el primer lugar en el concurso provincial de robótica e innovación tecnológica.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">📅</span>Evento
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Desfile Cívico — Día del Civismo</h3>
+              <p>Este viernes se realizará la formación y desfile cívico con la participación de todos los niveles.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎓</span>Académico
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Proceso de Matrículas Abierto</h3>
+              <p>Desde el 10 de marzo se encuentran habilitadas las inscripciones para el nuevo período académico.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🤝</span>Convenio
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Nuevo Convenio con Club Naval de la Marina</h3>
+              <p>Se renueva el acuerdo de uso de instalaciones deportivas para reforzar la formación física de los estudiantes.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎨</span>Cultura
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Ene 2026</span>
+              </div>
+              <h3>Concurso Interno de Danza 2026</h3>
+              <p>Inscripciones abiertas para el concurso anual de danza. Participan todos los cursos del bachillerato.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎙️</span>Podcast
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Lanzamiento: NOTI CHARLES</h3>
+              <p>¡Llega nuestro primer podcast institucional! Noticias, entrevistas y más desde la comunidad Charles Babbage.</p>
+            </div>
+
+          </div>
+
+          <!-- Scroll hint -->
+          <div class="scroll-hint" id="scroll-hint">
+            <span>más</span>
+            <svg width="14" height="8" viewBox="0 0 14 8" fill="none">
+              <path d="M1 1L7 7L13 1" stroke="#d4a942" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="left-footer">
+      <div class="info-item">
+        <span>Ubicación</span>
+        <span>Sangolquí, Rumiñahui</span>
+      </div>
+      <div class="info-item">
+        <span>Teléfono</span>
+        <span>+593 97 927 9532</span>
+      </div>
+      <div class="steam-badges">
+        <span class="steam-badge">STEAM</span>
+        <span class="steam-badge">Inglés</span>
+        <span class="steam-badge">Robótica</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═════════════════════════════ DIVIDER ══════════ -->
+  <div class="divider"></div>
+
+  <!-- ══════════════════════════════ RIGHT PANEL ════ -->
+  <section class="right">
+    <div class="scan-effect"></div>
+    <div class="login-box">
+
+      <!-- Shield -->
+      <div class="login-shield">
+        <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" width="72" height="72">
+          <defs>
+            <linearGradient id="sg2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#c9a84c"/><stop offset="50%" stop-color="#f0c96a"/><stop offset="100%" stop-color="#b8922a"/>
+            </linearGradient>
+            <linearGradient id="rg2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#9b1626"/><stop offset="100%" stop-color="#c41e36"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 2 L95 20 L95 65 Q95 95 50 118 Q5 95 5 65 L5 20 Z" fill="url(#sg2)" stroke="#c9a84c" stroke-width="1.5"/>
+          <path d="M50 8 L89 24 L89 64 Q89 91 50 112 Q11 91 11 64 L11 24 Z" fill="#0d0d0d"/>
+          <path d="M11 24 L89 80 L89 64 L11 55 Z" fill="url(#rg2)" opacity="0.7"/>
+          <path d="M11 55 L89 80 L89 91 Q72 104 50 112 Q28 104 11 91 Z" fill="url(#rg2)"/>
+          <text x="28" y="58" font-family="serif" font-size="14" fill="#f0c96a" font-style="italic">CH</text>
+          <text x="56" y="45" font-family="serif" font-size="12" fill="#f0c96a" font-style="italic">B</text>
+          <path d="M42 72 Q48 60 55 78 Q50 70 45 82 Q43 77 42 72Z" fill="#fff" opacity="0.85"/>
+          <rect x="62" y="24" width="16" height="12" rx="1" fill="none" stroke="#f0c96a" stroke-width="1.2" opacity="0.8"/>
+          <line x1="70" y1="24" x2="70" y2="36" stroke="#f0c96a" stroke-width="1" opacity="0.8"/>
+        </svg>
+      </div>
+
+      <!-- Title -->
+      <div class="login-title">
+        <h2>Acceso al Sistema</h2>
+        <p>Sistema Académico Institucional</p>
+      </div>
+
+      <!-- Role Selector -->
+      <div class="role-selector">
+        <button class="role-btn active" onclick="setRole('estudiante',this)" id="r-est">
+          <span class="r-icon">🎓</span>Estudiante
+        </button>
+        <button class="role-btn" onclick="setRole('profesor',this)" id="r-prof">
+          <span class="r-icon">📚</span>Profesor
+        </button>
+        <button class="role-btn" onclick="setRole('admin',this)" id="r-admin">
+          <span class="r-icon">⚙️</span>Admin
+        </button>
+      </div>
+
+      <!-- Hint -->
+      <div class="user-hint" id="user-hint">
+        💡 Estudiantes: ingresa tu <span>número de cédula</span> como usuario
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" id="user-label">Usuario / Cédula</label>
+          <div class="input-wrap">
+            <span class="input-icon" id="user-icon">🪪</span>
+            <input class="form-input" type="text" id="username" placeholder="Ingresa tu cédula" autocomplete="username" required/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input class="form-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required/>
+            <button type="button" class="toggle-pass" onclick="togglePass()" id="toggle-btn">👁️</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="login-btn">
+          Ingresar
+        </button>
+      </form>
+
+      <div class="gold-line"></div>
+
+      <div class="login-footer">
+        <a href="#">¿Olvidaste tu contraseña?</a>
+        <br/><br/>
+        <a href="https://colegiocharlesbabbage.com" target="_blank">🌐 colegiocharlesbabbage.com</a>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<script>
+/* ─── SUPABASE CONFIG ─── */
+const SUPA_URL = 'https://upytqftigginepncmoth.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVweXRxZnRpZ2dpbmVwbmNtb3RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NzA5ODQsImV4cCI6MjA4OTA0Njk4NH0.3NonScZQ3UHdYRuiGRFctco-EWYaW32-A375Lqk33Xs';
+const { createClient } = window.supabase;
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+/* ─── ERROR BANNER ─── */
+function showError(msg) {
+  let el = document.getElementById('login-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'login-error';
+    el.style.cssText = 'background:rgba(155,22,38,0.15);border:1px solid rgba(155,22,38,0.4);border-radius:8px;padding:10px 14px;font-size:0.82rem;color:#e88;margin-bottom:14px;display:flex;align-items:center;gap:8px;';
+    document.querySelector('form').insertAdjacentElement('beforebegin', el);
+  }
+  el.innerHTML = '⚠️ ' + msg;
+  el.style.display = 'flex';
+}
+function hideError() {
+  const el = document.getElementById('login-error');
+  if (el) el.style.display = 'none';
+}
+
+/* ─── CANVAS PARTICLE BACKGROUND ─── */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, particles;
+
+  const COLORS = ['rgba(180,130,30,', 'rgba(155,22,38,', 'rgba(212,169,66,'];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function mkParticle() {
+    const c = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.4 + 0.3,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      a: Math.random() * 0.6 + 0.08,
+      color: c
+    };
+  }
+
+  function init() {
+    resize();
+    particles = Array.from({length: 120}, mkParticle);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d  = Math.sqrt(dx*dx + dy*dy);
+        if (d < 110) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(180,130,30,${0.06 * (1 - d/110)})`;
+          ctx.lineWidth   = 0.5;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + p.a + ')';
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  draw();
+})();
+
+/* ─── SCROLL HINT ─── */
+(function(){
+  const cards = document.getElementById('news-cards');
+  const hint  = document.getElementById('scroll-hint');
+  if (!cards || !hint) return;
+  cards.addEventListener('scroll', function(){
+    const atBottom = cards.scrollTop + cards.clientHeight >= cards.scrollHeight - 20;
+    hint.style.opacity = atBottom ? '0' : '1';
+    hint.style.transition = 'opacity 0.3s';
+  });
+})();
+
+/* ─── LOAD NOTICIAS FROM SUPABASE ─── */
+async function loadNoticias() {
+  try {
+    const { data, error } = await sb
+      .from('noticias')
+      .select('*')
+      .eq('activa', true)
+      .eq('visibilidad', 'publica')
+      .order('fecha', { ascending: false })
+      .limit(10);
+
+    if (error || !data || data.length === 0) return; // keep static cards as fallback
+
+    const container = document.getElementById('news-cards');
+    container.innerHTML = '';
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    data.forEach(n => {
+      const d = new Date(n.fecha);
+      const monthStr = months[d.getMonth()] + ' ' + d.getFullYear();
+      container.innerHTML += `
+        <div class="news-card">
+          <div class="news-badge">
+            <span class="icon">${n.icono || '📢'}</span>${n.categoria}
+            <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">${monthStr}</span>
+          </div>
+          <h3>${n.titulo}</h3>
+          <p>${n.descripcion || ''}</p>
+        </div>`;
+    });
+  } catch(e) { /* keep static fallback */ }
+}
+loadNoticias();
+
+let currentRole = 'estudiante';
+
+function setRole(role, btn) {
+  currentRole = role;
+  hideError();
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const usernameInput = document.getElementById('username');
+  const label         = document.getElementById('user-label');
+  const icon          = document.getElementById('user-icon');
+  const hint          = document.getElementById('user-hint');
+
+  if (role === 'estudiante') {
+    label.textContent         = 'Usuario / Cédula';
+    usernameInput.placeholder = 'Ingresa tu número de cédula';
+    icon.textContent          = '🪪';
+    hint.innerHTML            = '💡 Estudiantes: ingresa tu <span>número de cédula</span> (contraseña = cédula)';
+    hint.style.display        = 'flex';
+  } else if (role === 'profesor') {
+    label.textContent         = 'Correo Electrónico';
+    usernameInput.placeholder = 'tu.correo@gmail.com';
+    icon.textContent          = '📧';
+    hint.innerHTML            = '💡 Profesores: usa tu <span>correo personal registrado</span>';
+    hint.style.display        = 'flex';
+  } else {
+    label.textContent         = 'Correo Electrónico';
+    usernameInput.placeholder = 'administrador@charlesbabbage.com';
+    icon.textContent          = '📧';
+    hint.style.display        = 'none';
+  }
+}
+
+/* ─── TOGGLE PASSWORD ─── */
+function togglePass() {
+  const inp = document.getElementById('password');
+  const btn = document.getElementById('toggle-btn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁️'; }
+}
+
+/* ─── LOGIN SUBMIT ─── */
+async function handleLogin(e) {
+  e.preventDefault();
+  hideError();
+  const btn      = document.getElementById('login-btn');
+  const rawUser  = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+
+  btn.textContent  = 'Verificando…';
+  btn.style.opacity = '0.75';
+  btn.disabled     = true;
+
+  try {
+    // Determinar email según rol
+    let email;
+    if (currentRole === 'estudiante') {
+      // El email del estudiante es cedula@gmail.com
+      email = rawUser + '@gmail.com';
+    } else {
+      email = rawUser;
+    }
+
+    // Autenticar con Supabase
+    const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      showError('Usuario o contraseña incorrectos. Verifica tus datos.');
+      return;
+    }
+
+    // Verificar roles del usuario
+    const { data: roles, error: rolesError } = await sb
+      .from('user_roles')
+      .select('rol')
+      .eq('user_id', authData.user.id);
+
+    if (rolesError || !roles || roles.length === 0) {
+      showError('No tienes un rol asignado. Contacta al administrador.');
+      await sb.auth.signOut();
+      return;
+    }
+
+    const rolList = roles.map(r => r.rol);
+
+    // Redirigir según rol (admin tiene prioridad)
+    if (rolList.includes('admin')) {
+      window.location.href = 'admin.html';
+    } else if (rolList.includes('docente')) {
+      window.location.href = 'docente.html';
+    } else if (rolList.includes('estudiante')) {
+      window.location.href = 'estudiante.html';
+    } else {
+      showError('Rol no reconocido. Contacta al administrador.');
+      await sb.auth.signOut();
+    }
+
+  } catch(err) {
+    showError('Error de conexión. Intenta nuevamente.');
+  } finally {
+    btn.textContent  = 'Ingresar';
+    btn.style.opacity = '1';
+    btn.disabled     = false;
+  }
+}
+</script>
+</body>
+</html>

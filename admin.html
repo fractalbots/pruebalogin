@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — Charles Babbage</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = 'https://upytqftigginepncmoth.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVweXRxZnRpZ2dpbmVwbmNtb3RoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NzA5ODQsImV4cCI6MjA4OTA0Njk4NH0.3NonScZQ3UHdYRuiGRFctco-EWYaW32-A375Lqk33Xs';
+const { createClient } = window.supabase;
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+// Protección de ruta: verificar sesión y rol admin
+(async function() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const { data: roles } = await sb.from('user_roles').select('rol').eq('user_id', session.user.id);
+  if (!roles || !roles.some(r => r.rol === 'admin')) { window.location.href = 'login.html'; return; }
+
+  // Cargar nombre del admin
+  const { data: profile } = await sb.from('profiles').select('nombres,apellidos').eq('id', session.user.id).single();
+  if (profile) {
+    const name = profile.nombres + ' ' + profile.apellidos;
+    document.querySelectorAll('.admin-name, [data-admin-name]').forEach(el => el.textContent = name);
+    const initials = (profile.nombres[0] + profile.apellidos[0]).toUpperCase();
+    document.querySelectorAll('.avatar, [data-admin-initials]').forEach(el => el.textContent = initials);
+  }
+})();
+
+async function cerrarSesion() {
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+}
+</script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --red:    #9b1626;
+  --red2:   #c41e36;
+  --gold:   #b8922a;
+  --gold2:  #d4a942;
+  --gold3:  #f0c96a;
+  --black:  #0f0f0f;
+  --dark:   #1e1e2e;
+  --white:  #ffffff;
+  --bg:     #f7f6f3;
+  --bg2:    #eeecea;
+  --text:   #1a1a2e;
+  --text2:  #4a4a6a;
+  --text3:  #8888aa;
+  --border: #e2dfd8;
+  --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  --shadow2:0 8px 32px rgba(0,0,0,0.12);
+  --sidebar-w: 260px;
+  --top-h: 64px;
+}
+
+html, body { height:100%; font-family:'DM Sans', sans-serif; background:var(--bg); color:var(--text); overflow:hidden; }
+
+/* ══════════ SIDEBAR ══════════ */
+.sidebar {
+  position: fixed; left:0; top:0; bottom:0;
+  width: var(--sidebar-w);
+  background: var(--dark);
+  display: flex; flex-direction: column;
+  z-index: 100;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-logo {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 22px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.sidebar-logo .logo-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+}
+.sidebar-logo .logo-text { display:flex; flex-direction:column; }
+.sidebar-logo .logo-text span {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  color: var(--gold2);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.sidebar-logo .logo-text strong {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.sidebar-role {
+  margin: 14px 16px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(155,22,38,0.25), rgba(155,22,38,0.12));
+  border: 1px solid rgba(155,22,38,0.3);
+  border-radius: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-role .role-dot { width:8px; height:8px; border-radius:50%; background:var(--red2); box-shadow:0 0 8px var(--red2); }
+.sidebar-role .role-info { display:flex; flex-direction:column; }
+.sidebar-role .role-info span { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.4); }
+.sidebar-role .role-info strong { font-size:0.82rem; color:#fff; font-weight:500; }
+
+/* nav groups */
+.nav-group { padding: 8px 0; }
+.nav-group-label {
+  padding: 6px 22px;
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  font-weight: 600;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.88rem;
+  font-weight: 400;
+  position: relative;
+}
+.nav-item .nav-icon { font-size: 1rem; flex-shrink:0; }
+.nav-item .nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+.nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.04); }
+.nav-item.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(155,22,38,0.2), transparent);
+  border-left-color: var(--red2);
+}
+.nav-item.active .nav-icon { filter: drop-shadow(0 0 6px rgba(196,30,54,0.6)); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.btn-logout {
+  width: 100%;
+  padding: 10px;
+  background: rgba(155,22,38,0.15);
+  border: 1px solid rgba(155,22,38,0.25);
+  border-radius: 8px;
+  color: rgba(255,255,255,0.55);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex; align-items:center; justify-content:center; gap:8px;
+  transition: all 0.2s;
+}
+.btn-logout:hover { background: rgba(155,22,38,0.3); color: #fff; }
+
+/* ══════════ TOPBAR ══════════ */
+.topbar {
+  position: fixed; top:0; left:var(--sidebar-w); right:0;
+  height: var(--top-h);
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items:center; justify-content:space-between;
+  padding: 0 32px;
+  z-index: 90;
+  box-shadow: var(--shadow);
+}
+.topbar-left { display:flex; flex-direction:column; }
+.topbar-left .page-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.topbar-left .breadcrumb {
+  font-size: 0.72rem;
+  color: var(--text3);
+  margin-top: 1px;
+}
+.topbar-left .breadcrumb span { color: var(--red); }
+
+.topbar-right { display:flex; align-items:center; gap:14px; }
+.topbar-date { font-size:0.75rem; color:var(--text3); }
+.avatar {
+  width: 38px; height:38px; border-radius:50%;
+  background: linear-gradient(135deg, var(--red), var(--red2));
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:700; font-size:0.9rem;
+  cursor:pointer; box-shadow: 0 2px 10px rgba(155,22,38,0.3);
+}
+.hamburger {
+  display:none; background:none; border:none; cursor:pointer;
+  font-size:1.4rem; color:var(--text2);
+}
+
+/* ══════════ MAIN ══════════ */
+.main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto;
+  padding: 28px 32px;
+}
+
+/* ══════════ SECTIONS ══════════ */
+.section { display:none; animation: fadeIn 0.3s ease; }
+.section.active { display:block; }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ══════════ DASHBOARD ══════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow2); }
+.stat-card::before {
+  content:''; position:absolute; top:0;right:0;
+  width:60px; height:60px;
+  border-radius: 0 14px 0 60px;
+  opacity:0.08;
+}
+.stat-card.red::before { background:var(--red); }
+.stat-card.gold::before { background:var(--gold); }
+.stat-card.green::before { background:#16a34a; }
+.stat-card.blue::before { background:#2563eb; }
+.stat-card .stat-icon { font-size:1.8rem; margin-bottom:10px; }
+.stat-card .stat-num {
+  font-family:'Cinzel',serif; font-size:2rem; font-weight:700;
+  color:var(--text); line-height:1;
+}
+.stat-card .stat-label { font-size:0.78rem; color:var(--text3); margin-top:4px; }
+.stat-card .stat-sub {
+  font-size:0.7rem; color:var(--text3); margin-top:8px;
+  padding-top:8px; border-top:1px solid var(--border);
+}
+.stat-card .stat-sub b { color:var(--red); }
+
+.dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; }
+.card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:22px; box-shadow:var(--shadow);
+}
+.card-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px;
+}
+.card-title {
+  font-family:'Cinzel',serif; font-size:0.88rem; font-weight:600; color:var(--text);
+}
+.card-action {
+  font-size:0.72rem; color:var(--red); cursor:pointer; font-weight:500;
+  border:none; background:none; padding:4px 8px;
+  border-radius:6px; transition:background 0.2s;
+}
+.card-action:hover { background:rgba(155,22,38,0.06); }
+
+/* activity list */
+.activity-list { display:flex; flex-direction:column; gap:12px; }
+.activity-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 12px; border-radius:10px;
+  background:var(--bg); border:1px solid var(--border);
+  transition:background 0.2s;
+}
+.activity-item:hover { background:var(--bg2); }
+.act-icon {
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:1rem;
+}
+.act-icon.red { background:rgba(155,22,38,0.1); }
+.act-icon.gold { background:rgba(184,146,42,0.1); }
+.act-icon.green { background:rgba(22,163,74,0.1); }
+.act-info { flex:1; }
+.act-info strong { font-size:0.83rem; color:var(--text); font-weight:500; display:block; }
+.act-info span { font-size:0.72rem; color:var(--text3); }
+.act-time { font-size:0.65rem; color:var(--text3); white-space:nowrap; }
+
+/* quick links */
+.quick-links { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.quick-link {
+  padding:14px; border-radius:10px;
+  background:var(--bg); border:1px solid var(--border);
+  cursor:pointer; transition:all 0.2s;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  text-align:center;
+}
+.quick-link:hover { border-color:var(--gold2); background:rgba(212,169,66,0.06); }
+.quick-link .ql-icon { font-size:1.5rem; }
+.quick-link span { font-size:0.72rem; color:var(--text2); font-weight:500; }
+
+/* ══════════ TABLE SECTION ══════════ */
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:22px; flex-wrap:wrap; gap:12px;
+}
+.section-header h2 {
+  font-family:'Cinzel',serif; font-size:1.1rem; font-weight:600; color:var(--text);
+}
+.section-header p { font-size:0.78rem; color:var(--text3); margin-top:3px; }
+
+.actions-bar {
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+
+.btn {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 18px; border-radius:8px; font-family:'DM Sans',sans-serif;
+  font-size:0.82rem; font-weight:600; cursor:pointer;
+  border:none; transition:all 0.2s; white-space:nowrap;
+}
+.btn-primary {
+  background:linear-gradient(135deg,var(--red),var(--red2));
+  color:#fff; box-shadow:0 2px 12px rgba(155,22,38,0.3);
+}
+.btn-primary:hover { box-shadow:0 4px 18px rgba(155,22,38,0.45); transform:translateY(-1px); }
+.btn-gold {
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:#fff; box-shadow:0 2px 12px rgba(184,146,42,0.3);
+}
+.btn-gold:hover { transform:translateY(-1px); box-shadow:0 4px 18px rgba(184,146,42,0.4); }
+.btn-outline {
+  background:var(--white); color:var(--text2);
+  border:1px solid var(--border);
+}
+.btn-outline:hover { border-color:var(--gold2); color:var(--text); }
+.btn-sm { padding:6px 12px; font-size:0.75rem; }
+.btn-icon { padding:8px; border-radius:7px; }
+
+.search-bar {
+  display:flex; align-items:center; gap:0;
+  background:var(--white); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.search-bar input {
+  border:none; outline:none; padding:9px 14px;
+  font-family:'DM Sans',sans-serif; font-size:0.83rem;
+  color:var(--text); background:transparent; min-width:200px;
+}
+.search-bar .search-icon { padding:0 12px; color:var(--text3); font-size:0.9rem; }
+
+.filter-select {
+  padding:9px 14px; border:1px solid var(--border); border-radius:8px;
+  font-family:'DM Sans',sans-serif; font-size:0.82rem; color:var(--text2);
+  background:var(--white); cursor:pointer; outline:none;
+}
+
+/* ══════════ DATA TABLE ══════════ */
+.table-wrap {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; overflow:hidden; box-shadow:var(--shadow);
+}
+.table-scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+thead th {
+  background:var(--bg); padding:12px 16px;
+  text-align:left; font-size:0.7rem; font-weight:700;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--text3);
+  border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody tr {
+  border-bottom:1px solid var(--border);
+  transition:background 0.15s;
+}
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:rgba(248,246,243,0.8); }
+tbody td { padding:13px 16px; font-size:0.84rem; color:var(--text); vertical-align:middle; }
+
+.avatar-cell { display:flex; align-items:center; gap:10px; }
+.mini-avatar {
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.75rem; font-weight:700; color:#fff;
+}
+.mini-avatar.red  { background:linear-gradient(135deg,var(--red),var(--red2)); }
+.mini-avatar.gold { background:linear-gradient(135deg,var(--gold),var(--gold2)); }
+.mini-avatar.dark { background:linear-gradient(135deg,#334,#556); }
+.cell-name { font-weight:500; color:var(--text); font-size:0.83rem; }
+.cell-sub  { font-size:0.7rem; color:var(--text3); margin-top:1px; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:20px; font-size:0.7rem; font-weight:600;
+}
+.badge-green  { background:rgba(22,163,74,0.1); color:#16a34a; }
+.badge-red    { background:rgba(155,22,38,0.1); color:var(--red2); }
+.badge-gold   { background:rgba(184,146,42,0.12); color:var(--gold); }
+.badge-blue   { background:rgba(37,99,235,0.1); color:#2563eb; }
+.badge-gray   { background:rgba(100,100,120,0.1); color:var(--text3); }
+
+.row-actions { display:flex; align-items:center; gap:6px; }
+.action-btn {
+  width:30px; height:30px; border-radius:7px; border:1px solid var(--border);
+  background:var(--white); cursor:pointer; display:flex; align-items:center;
+  justify-content:center; font-size:0.85rem; transition:all 0.2s; color:var(--text3);
+}
+.action-btn:hover.edit  { border-color:var(--gold2); color:var(--gold); background:rgba(212,169,66,0.07); }
+.action-btn:hover.del   { border-color:var(--red2); color:var(--red); background:rgba(155,22,38,0.07); }
+.action-btn:hover.view  { border-color:#2563eb; color:#2563eb; background:rgba(37,99,235,0.07); }
+
+.table-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-top:1px solid var(--border);
+  background:var(--bg); flex-wrap:wrap; gap:8px;
+}
+.table-footer span { font-size:0.75rem; color:var(--text3); }
+.pagination { display:flex; gap:4px; }
+.page-btn {
+  width:30px; height:30px; border-radius:6px; border:1px solid var(--border);
+  background:var(--white); cursor:pointer; font-size:0.78rem; color:var(--text2);
+  display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+}
+.page-btn.active { background:var(--red); border-color:var(--red); color:#fff; }
+.page-btn:hover:not(.active) { border-color:var(--gold2); color:var(--text); }
+
+/* ══════════ GRADES SECTION ══════════ */
+.trimester-tabs {
+  display:flex; gap:0; background:var(--bg);
+  border:1px solid var(--border); border-radius:10px; padding:4px;
+  margin-bottom:20px; width:fit-content;
+}
+.tab-btn {
+  padding:8px 22px; border-radius:7px; border:none; background:transparent;
+  font-family:'DM Sans',sans-serif; font-size:0.82rem; font-weight:500;
+  color:var(--text3); cursor:pointer; transition:all 0.2s;
+}
+.tab-btn.active {
+  background:var(--white); color:var(--text);
+  box-shadow:0 1px 6px rgba(0,0,0,0.1); font-weight:600;
+}
+
+.grade-legend {
+  display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap;
+}
+.legend-item { display:flex; align-items:center; gap:6px; font-size:0.73rem; color:var(--text3); }
+.legend-dot { width:10px; height:10px; border-radius:50%; }
+
+.grade-cell {
+  text-align:center; font-weight:700; font-size:0.9rem; padding:10px 8px !important;
+}
+.grade-pass  { color:#16a34a; }
+.grade-sup   { color:#d97706; background:rgba(217,119,6,0.08); border-radius:6px; }
+.grade-fail  { color:var(--red); }
+.grade-empty { color:var(--text3); font-weight:400; }
+
+.final-cell {
+  font-family:'Cinzel',serif; font-weight:700; font-size:0.95rem;
+  text-align:center; padding:10px 8px !important;
+}
+.sup-tag {
+  display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.65rem;
+  font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+  background:rgba(217,119,6,0.12); color:#d97706; border:1px solid rgba(217,119,6,0.25);
+  margin-left:4px;
+}
+.approved-tag {
+  display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.65rem;
+  font-weight:700; background:rgba(22,163,74,0.1); color:#16a34a;
+  border:1px solid rgba(22,163,74,0.25); margin-left:4px;
+}
+
+/* PDF EXPORT BUTTON */
+.btn-pdf {
+  background:linear-gradient(135deg,#1e293b,#334155);
+  color:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.2);
+}
+.btn-pdf:hover { transform:translateY(-1px); box-shadow:0 4px 18px rgba(0,0,0,0.3); }
+
+/* ══════════ MODAL ══════════ */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.45);
+  z-index:200; display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px); padding:20px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--white); border-radius:18px; width:100%;
+  max-width:540px; box-shadow:0 20px 60px rgba(0,0,0,0.2);
+  animation: modalIn 0.28s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes modalIn { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
+.modal-header {
+  padding:22px 26px 0;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-header h3 { font-family:'Cinzel',serif; font-size:1rem; font-weight:600; color:var(--text); }
+.modal-close {
+  width:32px; height:32px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg); cursor:pointer; display:flex; align-items:center;
+  justify-content:center; font-size:1rem; color:var(--text3); transition:all 0.2s;
+}
+.modal-close:hover { background:rgba(155,22,38,0.07); border-color:var(--red2); color:var(--red); }
+.modal-body { padding:20px 26px; }
+.modal-footer {
+  padding:0 26px 22px;
+  display:flex; justify-content:flex-end; gap:10px;
+}
+
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.form-group:last-child { margin-bottom:0; }
+label.fl {
+  font-size:0.7rem; font-weight:700; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--text3);
+}
+.fi {
+  padding:10px 13px; border:1px solid var(--border); border-radius:8px;
+  font-family:'DM Sans',sans-serif; font-size:0.88rem; color:var(--text);
+  background:var(--bg); outline:none; transition:border 0.2s;
+}
+.fi:focus { border-color:var(--gold2); background:var(--white); box-shadow:0 0 0 3px rgba(212,169,66,0.1); }
+select.fi { cursor:pointer; }
+
+/* ══════════ NOTICIAS EDITOR ══════════ */
+.news-editor-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:20px;
+}
+.news-editor-form { display:flex; flex-direction:column; gap:14px; }
+.news-preview-list { display:flex; flex-direction:column; gap:10px; max-height:500px; overflow-y:auto; }
+.news-preview-card {
+  background:var(--bg); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px; position:relative;
+}
+.news-preview-card .npcard-tag {
+  font-size:0.62rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--gold); margin-bottom:4px;
+}
+.news-preview-card h4 { font-size:0.88rem; font-weight:600; color:var(--text); margin-bottom:3px; }
+.news-preview-card p { font-size:0.75rem; color:var(--text3); line-height:1.5; }
+.news-preview-card .np-actions {
+  position:absolute; top:10px; right:10px;
+  display:flex; gap:5px;
+}
+
+/* ══════════ RESPONSIVE ══════════ */
+@media(max-width:1100px) {
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .dash-grid  { grid-template-columns:1fr; }
+  .news-editor-grid { grid-template-columns:1fr; }
+}
+@media(max-width:768px) {
+  :root { --sidebar-w:0px; }
+  .sidebar { transform:translateX(-260px); width:260px; }
+  .sidebar.open { transform:translateX(0); --sidebar-w:260px; }
+  .topbar { left:0; }
+  .main { margin-left:0; padding:20px 16px; }
+  .hamburger { display:block; }
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .form-row { grid-template-columns:1fr; }
+  .grade-legend { gap:10px; }
+}
+@media(max-width:480px) {
+  .stats-grid { grid-template-columns:1fr; }
+  .actions-bar { flex-direction:column; align-items:flex-start; }
+  .search-bar input { min-width:140px; }
+}
+
+/* ══════════ ASSIGNMENT MATRIX ══════════ */
+.matrix-wrap { overflow-x:auto; margin-top:6px; }
+.matrix-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+.matrix-table th {
+  background:var(--bg); padding:7px 10px; text-align:center;
+  border:1px solid var(--border); color:var(--text3);
+  font-weight:700; letter-spacing:0.06em; white-space:nowrap;
+}
+.matrix-table th.subject-col { text-align:left; min-width:140px; }
+.matrix-table td {
+  border:1px solid var(--border); padding:6px 10px; text-align:center; vertical-align:middle;
+}
+.matrix-table tr:hover td { background:rgba(248,246,243,0.6); }
+.matrix-table td.subject-name { text-align:left; font-weight:500; color:var(--text); background:var(--bg); }
+.matrix-cb { width:18px; height:18px; accent-color:var(--red); cursor:pointer; }
+
+/* ══════════ TOGGLE SWITCH ══════════ */
+.toggle-wrap { display:flex; align-items:center; gap:10px; }
+.toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider {
+  position:absolute; inset:0; background:#d1d5db; border-radius:24px;
+  cursor:pointer; transition:background 0.25s ease;
+}
+.toggle-slider::before {
+  content:''; position:absolute; width:18px; height:18px; border-radius:50%;
+  left:3px; top:3px; background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,0.2);
+  transition:transform 0.25s ease;
+}
+.toggle input:checked + .toggle-slider { background:var(--red2); }
+.toggle input:checked + .toggle-slider::before { transform:translateX(20px); }
+.toggle-label { font-size:0.82rem; font-weight:500; color:var(--text2); }
+.toggle-state { font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:10px; }
+.toggle-state.on  { background:rgba(22,163,74,0.1); color:#16a34a; }
+.toggle-state.off { background:rgba(155,22,38,0.08); color:var(--red); }
+
+/* ══════════ CONTROL NOTAS ══════════ */
+.control-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:24px; }
+.control-card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:14px; padding:22px; box-shadow:var(--shadow);
+  position:relative; overflow:hidden;
+}
+.control-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:4px;
+  background:linear-gradient(90deg,var(--red),var(--red2));
+  border-radius:14px 14px 0 0;
+  opacity:0; transition:opacity 0.3s;
+}
+.control-card.active-trim::before { opacity:1; }
+.control-card.t2::before { background:linear-gradient(90deg,var(--gold),var(--gold2)); }
+.control-card.t3::before { background:linear-gradient(90deg,#2563eb,#3b82f6); }
+
+.control-card-header {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
+}
+.control-card-title { font-family:'Cinzel',serif; font-size:0.95rem; font-weight:600; color:var(--text); }
+.trim-badge { font-size:0.65rem; font-weight:700; padding:3px 10px; border-radius:12px; letter-spacing:0.08em; text-transform:uppercase; }
+.trim-badge.open   { background:rgba(22,163,74,0.12); color:#16a34a; border:1px solid rgba(22,163,74,0.2); }
+.trim-badge.closed { background:rgba(155,22,38,0.08); color:var(--red); border:1px solid rgba(155,22,38,0.15); }
+.trim-badge.future { background:rgba(37,99,235,0.08); color:#2563eb; border:1px solid rgba(37,99,235,0.15); }
+
+.course-toggle-list { display:flex; flex-direction:column; gap:8px; }
+.course-toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 10px; border-radius:8px; background:var(--bg);
+  border:1px solid var(--border); transition:border-color 0.2s;
+}
+.course-toggle-row:hover { border-color:rgba(212,169,66,0.3); }
+.course-toggle-row span { font-size:0.8rem; color:var(--text2); font-weight:500; }
+
+.master-toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px; border-radius:10px; margin-bottom:10px;
+  background:linear-gradient(135deg,rgba(155,22,38,0.05),rgba(155,22,38,0.02));
+  border:1px solid rgba(155,22,38,0.15);
+}
+.master-toggle-row span { font-size:0.82rem; font-weight:700; color:var(--text); }
+
+.ctrl-dates { display:flex; gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+.ctrl-date-item { flex:1; }
+.ctrl-date-item label { font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); display:block; margin-bottom:4px; }
+.ctrl-date-item input { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.75rem; color:var(--text); background:var(--bg); outline:none; }
+.ctrl-date-item input:focus { border-color:var(--gold2); }
+
+.global-ctrl-bar {
+  background:var(--white); border:1px solid var(--border); border-radius:14px;
+  padding:18px 22px; box-shadow:var(--shadow); margin-bottom:24px;
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+}
+.global-ctrl-info { display:flex; flex-direction:column; }
+.global-ctrl-info strong { font-size:0.95rem; font-weight:600; color:var(--text); }
+.global-ctrl-info span { font-size:0.75rem; color:var(--text3); margin-top:2px; }
+.global-ctrl-actions { display:flex; gap:10px; }
+
+/* modal wider */
+.modal.wide { max-width:700px; }
+.modal-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.modal-tab-btn {
+  padding:10px 18px; border:none; background:none; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-size:0.83rem; font-weight:500;
+  color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:all 0.2s;
+}
+.modal-tab-btn.active { color:var(--red); border-bottom-color:var(--red); font-weight:700; }
+
+/* ══════════ MISC ══════════ */
+.divider-h { height:1px; background:var(--border); margin:20px 0; }
+.empty-state {
+  text-align:center; padding:48px 20px; color:var(--text3);
+}
+.empty-state .es-icon { font-size:3rem; margin-bottom:12px; opacity:0.4; }
+.empty-state p { font-size:0.85rem; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <svg class="logo-icon" viewBox="0 0 100 120" fill="none">
+      <defs>
+        <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#c9a84c"/><stop offset="50%" stop-color="#f0c96a"/><stop offset="100%" stop-color="#b8922a"/>
+        </linearGradient>
+        <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#9b1626"/><stop offset="100%" stop-color="#c41e36"/>
+        </linearGradient>
+      </defs>
+      <path d="M50 2 L95 20 L95 65 Q95 95 50 118 Q5 95 5 65 L5 20 Z" fill="url(#sg)"/>
+      <path d="M50 8 L89 24 L89 64 Q89 91 50 112 Q11 91 11 64 L11 24 Z" fill="#1a1a2e"/>
+      <path d="M11 24 L89 80 L89 64 L11 55 Z" fill="url(#rg)" opacity="0.75"/>
+      <path d="M11 55 L89 80 L89 91 Q72 104 50 112 Q28 104 11 91 Z" fill="url(#rg)"/>
+      <text x="28" y="60" font-family="serif" font-size="14" fill="#f0c96a" font-style="italic">CH</text>
+      <text x="58" y="46" font-family="serif" font-size="11" fill="#f0c96a" font-style="italic">B</text>
+    </svg>
+    <div class="logo-text">
+      <span>Colegio</span>
+      <strong>Charles Babbage</strong>
+    </div>
+  </div>
+
+  <div class="sidebar-role">
+    <div class="role-dot"></div>
+    <div class="role-info">
+      <span>Rol activo</span>
+      <strong>Administrador</strong>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">General</div>
+    <div class="nav-item active" onclick="showSection('dashboard',this)">
+      <span class="nav-icon">🏠</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showSection('noticias',this)">
+      <span class="nav-icon">📢</span> Noticias &amp; Novedades
+      <span class="nav-badge">7</span>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Gestión</div>
+    <div class="nav-item" onclick="showSection('docentes',this)">
+      <span class="nav-icon">📚</span> Docentes
+    </div>
+    <div class="nav-item" onclick="showSection('estudiantes',this)">
+      <span class="nav-icon">🎓</span> Estudiantes
+    </div>
+    <div class="nav-item" onclick="showSection('cursos',this)">
+      <span class="nav-icon">🏫</span> Cursos &amp; Materias
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Académico</div>
+    <div class="nav-item" onclick="showSection('calificaciones',this)">
+      <span class="nav-icon">📊</span> Calificaciones
+    </div>
+    <div class="nav-item" onclick="showSection('control-notas',this)">
+      <span class="nav-icon">🔐</span> Control de Notas
+    </div>
+    <div class="nav-item" onclick="showSection('asistencia',this)">
+      <span class="nav-icon">📅</span> Asistencia
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <button class="btn-logout" onclick="window.location='login.html'">
+      <span>🚪</span> Cerrar Sesión
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-left">
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="breadcrumb">Admin / <span id="breadcrumb-current">Inicio</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-date" id="topbar-date"></span>
+    <div class="avatar" title="Administrador">AD</div>
+  </div>
+</header>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="main">
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="section active" id="sec-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card red">
+        <div class="stat-icon">🎓</div>
+        <div class="stat-num">100</div>
+        <div class="stat-label">Estudiantes matriculados</div>
+        <div class="stat-sub">Período 2025–2026</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-icon">📚</div>
+        <div class="stat-num">12</div>
+        <div class="stat-label">Docentes activos</div>
+        <div class="stat-sub"><b>2</b> con materias asignadas pendientes</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-icon">🏫</div>
+        <div class="stat-num">6</div>
+        <div class="stat-label">Cursos activos</div>
+        <div class="stat-sub">8vo a 3ro BGU</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-num">8</div>
+        <div class="stat-label">Estudiantes con supletorio</div>
+        <div class="stat-sub">Nota menor a 7 — Trimestre 2</div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Actividad Reciente</div>
+          <button class="card-action">Ver todo</button>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="act-icon green">✅</div>
+            <div class="act-info">
+              <strong>Calificaciones T2 cargadas — 10mo "A"</strong>
+              <span>Prof. Martínez — Matemáticas</span>
+            </div>
+            <span class="act-time">Hace 2h</span>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon red">👤</div>
+            <div class="act-info">
+              <strong>Nuevo estudiante registrado</strong>
+              <span>Valentina Torres — 8vo "B"</span>
+            </div>
+            <span class="act-time">Ayer</span>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon gold">📢</div>
+            <div class="act-info">
+              <strong>Noticia publicada</strong>
+              <span>Desfile Cívico — Día del Civismo</span>
+            </div>
+            <span class="act-time">Ayer</span>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon red">📊</div>
+            <div class="act-info">
+              <strong>Reporte PDF exportado</strong>
+              <span>Calificaciones T1 — 1ro BGU "A"</span>
+            </div>
+            <span class="act-time">Lun</span>
+          </div>
+          <div class="activity-item">
+            <div class="act-icon gold">✏️</div>
+            <div class="act-info">
+              <strong>Datos actualizados — Docente</strong>
+              <span>Lic. González — correo modificado</span>
+            </div>
+            <span class="act-time">Lun</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Acceso Rápido</div>
+        </div>
+        <div class="quick-links">
+          <div class="quick-link" onclick="showSection('docentes',document.querySelector('[onclick*=docentes]'))">
+            <span class="ql-icon">➕</span>
+            <span>Nuevo Docente</span>
+          </div>
+          <div class="quick-link" onclick="showSection('estudiantes',document.querySelector('[onclick*=estudiantes]'))">
+            <span class="ql-icon">🎓</span>
+            <span>Nuevo Estudiante</span>
+          </div>
+          <div class="quick-link" onclick="showSection('calificaciones',document.querySelector('[onclick*=calificaciones]'))">
+            <span class="ql-icon">📊</span>
+            <span>Ver Calificaciones</span>
+          </div>
+          <div class="quick-link" onclick="showSection('noticias',document.querySelector('[onclick*=noticias]'))">
+            <span class="ql-icon">📢</span>
+            <span>Publicar Noticia</span>
+          </div>
+        </div>
+
+        <div class="divider-h"></div>
+        <div class="card-header" style="margin-bottom:12px">
+          <div class="card-title">Trimestre Actual</div>
+          <span class="badge badge-gold">T2 en curso</span>
+        </div>
+        <div style="font-size:0.8rem;color:var(--text3);line-height:1.9;">
+          📅 Inicio: <b style="color:var(--text)">3 Feb 2026</b><br/>
+          📅 Cierre: <b style="color:var(--text)">30 May 2026</b><br/>
+          📋 Materias evaluadas: <b style="color:var(--text)">8 / 10</b><br/>
+          ⚠️ Pendientes de nota: <b style="color:var(--red)">2 docentes</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DOCENTES ═══ -->
+  <div class="section" id="sec-docentes">
+    <div class="section-header">
+      <div>
+        <h2>Gestión de Docentes</h2>
+        <p>Administra el personal docente de la institución</p>
+      </div>
+      <div class="actions-bar">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Buscar docente..." oninput="filterTable('docentes-table',this.value)"/>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-docente','Nuevo Docente')">➕ Agregar Docente</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="docentes-table">
+          <thead>
+            <tr>
+              <th>Docente</th>
+              <th>Materia(s)</th>
+              <th>Correo</th>
+              <th>Cursos</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar gold">LM</div><div><div class="cell-name">Lic. Laura Martínez</div><div class="cell-sub">Docente</div></div></div></td>
+              <td>Matemáticas</td>
+              <td style="font-size:0.78rem;color:var(--text3)">l.martinez [at] charlesbabbage.com</td>
+              <td><span class="badge badge-blue">8vo A</span> <span class="badge badge-blue">9no A</span></td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view" title="Ver">👁️</button><button class="action-btn edit" title="Editar" onclick="openModal('modal-docente','Editar Docente')">✏️</button><button class="action-btn del" title="Eliminar">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar red">CG</div><div><div class="cell-name">Prof. Carlos González</div><div class="cell-sub">Docente</div></div></div></td>
+              <td>Lengua y Literatura</td>
+              <td style="font-size:0.78rem;color:var(--text3)">correo [at] charlesbabbage.com</td>
+              <td><span class="badge badge-blue">10mo A</span> <span class="badge badge-blue">1ro BGU</span></td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-docente','Editar Docente')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar dark">AR</div><div><div class="cell-name">Mg. Ana Rodríguez</div><div class="cell-sub">Docente</div></div></div></td>
+              <td>Ciencias Naturales</td>
+              <td style="font-size:0.78rem;color:var(--text3)">correo [at] charlesbabbage.com</td>
+              <td><span class="badge badge-blue">8vo B</span></td>
+              <td><span class="badge badge-gold">● Licencia</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-docente','Editar Docente')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar gold">JP</div><div><div class="cell-name">Lic. Jorge Pérez</div><div class="cell-sub">Docente</div></div></div></td>
+              <td>Historia y CCSS</td>
+              <td style="font-size:0.78rem;color:var(--text3)">correo [at] charlesbabbage.com</td>
+              <td><span class="badge badge-blue">2do BGU</span> <span class="badge badge-blue">3ro BGU</span></td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-docente','Editar Docente')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar red">MV</div><div><div class="cell-name">Ing. María Vásquez</div><div class="cell-sub">Docente STEAM</div></div></div></td>
+              <td>Robótica / Tecnología</td>
+              <td style="font-size:0.78rem;color:var(--text3)">correo [at] charlesbabbage.com</td>
+              <td><span class="badge badge-blue">Todos los niveles</span></td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-docente','Editar Docente')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span>Mostrando 5 de 12 docentes</span>
+        <div class="pagination">
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ESTUDIANTES ═══ -->
+  <div class="section" id="sec-estudiantes">
+    <div class="section-header">
+      <div>
+        <h2>Gestión de Estudiantes</h2>
+        <p>100 estudiantes matriculados — Período 2025–2026</p>
+      </div>
+      <div class="actions-bar">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Cédula o nombre..." oninput="filterTable('estudiantes-table',this.value)"/>
+        </div>
+        <select class="filter-select" onchange="filterByCurso(this.value)">
+          <option value="">Todos los cursos</option>
+          <option>8vo "A"</option><option>8vo "B"</option>
+          <option>9no "A"</option><option>10mo "A"</option>
+          <option>1ro BGU</option><option>2do BGU</option><option>3ro BGU</option>
+        </select>
+        <button class="btn btn-primary" onclick="openModal('modal-estudiante','Nuevo Estudiante')">➕ Agregar Estudiante</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table id="estudiantes-table">
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Cédula</th>
+              <th>Curso</th>
+              <th>Representante</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar red">VT</div><div><div class="cell-name">Valentina Torres</div><div class="cell-sub">Estudiante</div></div></div></td>
+              <td style="font-family:monospace;font-size:0.82rem">1750123456</td>
+              <td><span class="badge badge-blue">8vo "B"</span></td>
+              <td style="font-size:0.78rem;color:var(--text3)">María Torres — 0987654321</td>
+              <td><span class="badge badge-green">● Activa</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-estudiante','Editar Estudiante')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar gold">SC</div><div><div class="cell-name">Santiago Cárdenas</div><div class="cell-sub">Estudiante</div></div></div></td>
+              <td style="font-family:monospace;font-size:0.82rem">1720987654</td>
+              <td><span class="badge badge-blue">9no "A"</span></td>
+              <td style="font-size:0.78rem;color:var(--text3)">Luis Cárdenas — 0991234567</td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-estudiante','Editar Estudiante')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar dark">IR</div><div><div class="cell-name">Isabella Ramírez</div><div class="cell-sub">Estudiante</div></div></div></td>
+              <td style="font-family:monospace;font-size:0.82rem">1745678901</td>
+              <td><span class="badge badge-blue">1ro BGU</span></td>
+              <td style="font-size:0.78rem;color:var(--text3)">Carmen Ramírez — 0967891234</td>
+              <td><span class="badge badge-red">⚠️ Supletorio</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-estudiante','Editar Estudiante')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar red">DM</div><div><div class="cell-name">Diego Molina</div><div class="cell-sub">Estudiante</div></div></div></td>
+              <td style="font-family:monospace;font-size:0.82rem">1730456789</td>
+              <td><span class="badge badge-blue">2do BGU</span></td>
+              <td style="font-size:0.78rem;color:var(--text3)">Roberto Molina — 0978563412</td>
+              <td><span class="badge badge-green">● Activo</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-estudiante','Editar Estudiante')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="avatar-cell"><div class="mini-avatar gold">AV</div><div><div class="cell-name">Ariana Vargas</div><div class="cell-sub">Estudiante</div></div></div></td>
+              <td style="font-family:monospace;font-size:0.82rem">1762345678</td>
+              <td><span class="badge badge-blue">3ro BGU</span></td>
+              <td style="font-size:0.78rem;color:var(--text3)">Paola Vargas — 0956781234</td>
+              <td><span class="badge badge-green">● Activa</span></td>
+              <td><div class="row-actions"><button class="action-btn view">👁️</button><button class="action-btn edit" onclick="openModal('modal-estudiante','Editar Estudiante')">✏️</button><button class="action-btn del">🗑️</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span>Mostrando 5 de 100 estudiantes</span>
+        <div class="pagination">
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">…</button>
+          <button class="page-btn">10</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CALIFICACIONES ═══ -->
+  <div class="section" id="sec-calificaciones">
+    <div class="section-header">
+      <div>
+        <h2>Calificaciones por Curso</h2>
+        <p>Vista general por trimestre — nota mínima de aprobación: <b>7.00</b> · Menor a 7 = Supletorio</p>
+      </div>
+      <div class="actions-bar">
+        <select class="filter-select" onchange="document.getElementById('curso-label').textContent=this.options[this.selectedIndex].text">
+          <option>8vo "A"</option><option>8vo "B"</option>
+          <option>9no "A"</option><option>10mo "A"</option>
+          <option>1ro BGU</option><option>2do BGU</option><option>3ro BGU</option>
+        </select>
+        <button class="btn btn-pdf" onclick="exportPDF()">📄 Exportar PDF</button>
+      </div>
+    </div>
+
+    <!-- Trimester tabs -->
+    <div class="trimester-tabs">
+      <button class="tab-btn active" onclick="setTrimestre(1,this)">Trimestre 1</button>
+      <button class="tab-btn" onclick="setTrimestre(2,this)">Trimestre 2</button>
+      <button class="tab-btn" onclick="setTrimestre(3,this)">Trimestre 3</button>
+      <button class="tab-btn" onclick="setTrimestre(0,this)">Vista General</button>
+    </div>
+
+    <div class="grade-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#16a34a"></div>Aprobado (≥ 7.00)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Supletorio (< 7.00)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9b1626"></div>Reprobado (< 5.00)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#aaa"></div>Sin nota</div>
+    </div>
+
+    <div class="table-wrap" id="grades-table-wrap">
+      <div class="table-scroll">
+        <table id="grades-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Estudiante</th>
+              <th>Matemáticas</th>
+              <th>Lengua</th>
+              <th>CC.NN.</th>
+              <th>Historia</th>
+              <th>Inglés</th>
+              <th>Robótica</th>
+              <th>Ed. Física</th>
+              <th>Promedio</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="grades-tbody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="grade-summary">Curso: <b>8vo "A"</b> — Trimestre 1 — 16 estudiantes</span>
+        <span id="curso-label" style="font-size:0.75rem;color:var(--text3);font-weight:600">8vo "A"</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ NOTICIAS ═══ -->
+  <div class="section" id="sec-noticias">
+    <div class="section-header">
+      <div>
+        <h2>Noticias &amp; Novedades</h2>
+        <p>El contenido publicado aquí aparece en la pantalla de login</p>
+      </div>
+    </div>
+    <div class="news-editor-grid">
+      <!-- Form -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">✏️ Publicar Novedad</div></div>
+        <div class="news-editor-form">
+          <div class="form-group">
+            <label class="fl">Categoría</label>
+            <select class="fi">
+              <option>📢 Comunicado</option><option>🏆 Logros</option>
+              <option>📅 Evento</option><option>🎓 Académico</option>
+              <option>🤝 Convenio</option><option>🎨 Cultura</option>
+              <option>🎙️ Podcast</option><option>📌 Importante</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="fl">Título de la noticia</label>
+            <input class="fi" type="text" placeholder="Ej: Inicio del año lectivo..."/>
+          </div>
+          <div class="form-group">
+            <label class="fl">Descripción</label>
+            <textarea class="fi" rows="4" placeholder="Describe brevemente la noticia..." style="resize:vertical"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="fl">Fecha</label>
+              <input class="fi" type="date"/>
+            </div>
+            <div class="form-group">
+              <label class="fl">Visibilidad</label>
+              <select class="fi"><option>Pública</option><option>Solo docentes</option></select>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%">📢 Publicar Noticia</button>
+        </div>
+      </div>
+      <!-- Preview list -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📋 Noticias publicadas</div><button class="card-action">Ordenar ↕</button></div>
+        <div class="news-preview-list">
+          <div class="news-preview-card">
+            <div class="npcard-tag">📢 Comunicado · Mar 2026</div>
+            <h4>Inicio del Año Lectivo 2025–2026</h4>
+            <p>Las actividades académicas se reanudan con toda la energía...</p>
+            <div class="np-actions">
+              <button class="action-btn edit" title="Editar">✏️</button>
+              <button class="action-btn del" title="Eliminar">🗑️</button>
+            </div>
+          </div>
+          <div class="news-preview-card">
+            <div class="npcard-tag">🏆 Logros · Feb 2026</div>
+            <h4>Reconocimiento en Robótica STEAM</h4>
+            <p>Primer lugar en el concurso provincial de robótica...</p>
+            <div class="np-actions">
+              <button class="action-btn edit">✏️</button>
+              <button class="action-btn del">🗑️</button>
+            </div>
+          </div>
+          <div class="news-preview-card">
+            <div class="npcard-tag">📅 Evento · Mar 2026</div>
+            <h4>Desfile Cívico — Día del Civismo</h4>
+            <p>Este viernes se realizará la formación y desfile cívico...</p>
+            <div class="np-actions">
+              <button class="action-btn edit">✏️</button>
+              <button class="action-btn del">🗑️</button>
+            </div>
+          </div>
+          <div class="news-preview-card">
+            <div class="npcard-tag">🎓 Académico · Mar 2026</div>
+            <h4>Proceso de Matrículas Abierto</h4>
+            <p>Desde el 10 de marzo se encuentran habilitadas las inscripciones...</p>
+            <div class="np-actions">
+              <button class="action-btn edit">✏️</button>
+              <button class="action-btn del">🗑️</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CURSOS (placeholder) ═══ -->
+  <div class="section" id="sec-cursos">
+    <div class="section-header"><div><h2>Cursos &amp; Materias</h2><p>Próximamente disponible</p></div></div>
+    <div class="card" style="text-align:center;padding:60px">
+      <div style="font-size:3rem;margin-bottom:12px">🏫</div>
+      <div style="font-size:0.9rem;color:var(--text3)">Módulo en construcción. Se habilitará en la siguiente etapa.</div>
+    </div>
+  </div>
+
+  <!-- ═══ CONTROL DE NOTAS ═══ -->
+  <div class="section" id="sec-control-notas">
+    <div class="section-header">
+      <div>
+        <h2>Control de Carga de Notas</h2>
+        <p>Activa o desactiva el período de ingreso de calificaciones por trimestre y curso</p>
+      </div>
+    </div>
+
+    <!-- Global bar -->
+    <div class="global-ctrl-bar">
+      <div class="global-ctrl-info">
+        <strong>🔐 Control maestro del sistema</strong>
+        <span>Al desactivar todo, ningún docente podrá modificar notas — independientemente del trimestre</span>
+      </div>
+      <div class="global-ctrl-actions">
+        <button class="btn btn-outline" onclick="setAllToggles(false)">🔒 Cerrar todo</button>
+        <button class="btn btn-primary" onclick="setAllToggles(true)">🔓 Abrir todo</button>
+      </div>
+    </div>
+
+    <!-- 3 trimestre cards -->
+    <div class="control-grid">
+
+      <!-- T1 -->
+      <div class="control-card t1" id="card-t1">
+        <div class="control-card-header">
+          <div class="control-card-title">Trimestre 1</div>
+          <span class="trim-badge closed" id="badge-t1">CERRADO</span>
+        </div>
+        <div class="master-toggle-row">
+          <span>Activar T1 completo</span>
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" onchange="masterToggle('t1',this)"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="course-toggle-list" id="list-t1">
+          <div class="course-toggle-row"><span>8vo "A"</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>8vo "B"</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>9no "A"</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>10mo "A"</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>1ro BGU</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>2do BGU</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>3ro BGU</span><label class="toggle"><input type="checkbox" class="cb-t1" onchange="updateTrimBadge('t1')"/><span class="toggle-slider"></span></label></div>
+        </div>
+        <div class="ctrl-dates">
+          <div class="ctrl-date-item"><label>Fecha inicio</label><input type="date" value="2025-10-01"/></div>
+          <div class="ctrl-date-item"><label>Fecha cierre</label><input type="date" value="2026-01-31"/></div>
+        </div>
+      </div>
+
+      <!-- T2 -->
+      <div class="control-card t2 active-trim" id="card-t2">
+        <div class="control-card-header">
+          <div class="control-card-title">Trimestre 2</div>
+          <span class="trim-badge open" id="badge-t2">ABIERTO</span>
+        </div>
+        <div class="master-toggle-row" style="background:rgba(212,169,66,0.06);border-color:rgba(212,169,66,0.2)">
+          <span>Activar T2 completo</span>
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" checked onchange="masterToggle('t2',this)"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="course-toggle-list" id="list-t2">
+          <div class="course-toggle-row"><span>8vo "A"</span><label class="toggle"><input type="checkbox" checked class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>8vo "B"</span><label class="toggle"><input type="checkbox" checked class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>9no "A"</span><label class="toggle"><input type="checkbox" checked class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>10mo "A"</span><label class="toggle"><input type="checkbox" checked class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>1ro BGU</span><label class="toggle"><input type="checkbox" checked class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>2do BGU</span><label class="toggle"><input type="checkbox" class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>3ro BGU</span><label class="toggle"><input type="checkbox" class="cb-t2" onchange="updateTrimBadge('t2')"/><span class="toggle-slider"></span></label></div>
+        </div>
+        <div class="ctrl-dates">
+          <div class="ctrl-date-item"><label>Fecha inicio</label><input type="date" value="2026-02-03"/></div>
+          <div class="ctrl-date-item"><label>Fecha cierre</label><input type="date" value="2026-05-30"/></div>
+        </div>
+      </div>
+
+      <!-- T3 -->
+      <div class="control-card t3" id="card-t3">
+        <div class="control-card-header">
+          <div class="control-card-title">Trimestre 3</div>
+          <span class="trim-badge future" id="badge-t3">PRÓXIMO</span>
+        </div>
+        <div class="master-toggle-row" style="background:rgba(37,99,235,0.04);border-color:rgba(37,99,235,0.15)">
+          <span>Activar T3 completo</span>
+          <div class="toggle-wrap">
+            <label class="toggle">
+              <input type="checkbox" onchange="masterToggle('t3',this)"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="course-toggle-list" id="list-t3">
+          <div class="course-toggle-row"><span>8vo "A"</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>8vo "B"</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>9no "A"</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>10mo "A"</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>1ro BGU</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>2do BGU</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+          <div class="course-toggle-row"><span>3ro BGU</span><label class="toggle"><input type="checkbox" class="cb-t3" onchange="updateTrimBadge('t3')"/><span class="toggle-slider"></span></label></div>
+        </div>
+        <div class="ctrl-dates">
+          <div class="ctrl-date-item"><label>Fecha inicio</label><input type="date" value="2026-06-02"/></div>
+          <div class="ctrl-date-item"><label>Fecha cierre</label><input type="date" value="2026-08-30"/></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status summary -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">📋 Resumen de estado actual</div></div>
+      <div id="control-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:0.82rem;color:var(--text2)">
+        <div><b style="color:var(--text)">Trimestre 1</b><br/>Estado: <span style="color:var(--red)">Cerrado</span><br/>Cursos abiertos: 0 / 7</div>
+        <div><b style="color:var(--text)">Trimestre 2</b><br/>Estado: <span style="color:#16a34a">Abierto</span><br/>Cursos abiertos: 5 / 7</div>
+        <div><b style="color:var(--text)">Trimestre 3</b><br/>Estado: <span style="color:#2563eb">No iniciado</span><br/>Cursos abiertos: 0 / 7</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="section" id="sec-asistencia">
+    <div class="section-header"><div><h2>Asistencia</h2><p>Próximamente disponible</p></div></div>
+    <div class="card" style="text-align:center;padding:60px">
+      <div style="font-size:3rem;margin-bottom:12px">📅</div>
+      <div style="font-size:0.9rem;color:var(--text3)">Módulo en construcción. Se habilitará en la siguiente etapa.</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════ MODAL DOCENTE ═══════════ -->
+<div class="modal-overlay" id="modal-docente">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3 id="modal-docente-title">Nuevo Docente</h3>
+      <button class="modal-close" onclick="closeModal('modal-docente')">✕</button>
+    </div>
+    <div class="modal-body" style="padding-top:10px">
+
+      <!-- Tabs -->
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" onclick="switchModalTab('tab-info',this)">👤 Datos personales</button>
+        <button class="modal-tab-btn" onclick="switchModalTab('tab-asignacion',this)">🗂️ Asignación de cursos</button>
+        <button class="modal-tab-btn" onclick="switchModalTab('tab-acceso',this)">🔐 Acceso</button>
+      </div>
+
+      <!-- TAB 1: Datos personales -->
+      <div id="tab-info" class="modal-tab-content">
+        <div class="form-row">
+          <div class="form-group"><label class="fl">Nombres</label><input class="fi" type="text" placeholder="Ej: Laura"/></div>
+          <div class="form-group"><label class="fl">Apellidos</label><input class="fi" type="text" placeholder="Ej: Martínez"/></div>
+        </div>
+        <div class="form-group"><label class="fl">Correo electrónico institucional</label><input class="fi" type="email" placeholder="nombre@charlesbabbage.com"/></div>
+        <div class="form-row">
+          <div class="form-group"><label class="fl">Cédula</label><input class="fi" type="text" placeholder="1700000000"/></div>
+          <div class="form-group"><label class="fl">Teléfono</label><input class="fi" type="text" placeholder="0991234567"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="fl">Título / Título académico</label><input class="fi" type="text" placeholder="Ej: Licenciado, Magíster, Ingeniero"/></div>
+          <div class="form-group"><label class="fl">Estado</label>
+            <select class="fi"><option>Activo</option><option>Licencia</option><option>Inactivo</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Asignación de cursos (MATRIZ) -->
+      <div id="tab-asignacion" class="modal-tab-content" style="display:none">
+        <p style="font-size:0.78rem;color:var(--text3);margin-bottom:14px">
+          Marca ✅ cada celda donde el docente imparte esa materia en ese curso. Un docente puede tener la misma materia en múltiples cursos.
+        </p>
+        <div class="matrix-wrap">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th class="subject-col">Materia</th>
+                <th>8vo A</th><th>8vo B</th>
+                <th>9no A</th><th>10mo A</th>
+                <th>1ro BGU</th><th>2do BGU</th><th>3ro BGU</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-tbody"></tbody>
+          </table>
+        </div>
+        <p style="font-size:0.7rem;color:var(--text3);margin-top:10px">
+          💡 <b>Tip:</b> Si el docente da la misma materia a todos los cursos, usa el checkbox de la fila para marcar todos de una vez.
+        </p>
+      </div>
+
+      <!-- TAB 3: Acceso -->
+      <div id="tab-acceso" class="modal-tab-content" style="display:none">
+        <div style="background:rgba(212,169,66,0.07);border:1px solid rgba(212,169,66,0.2);border-radius:10px;padding:14px;margin-bottom:16px;font-size:0.8rem;color:var(--text2)">
+          🔑 El docente usará su <b>correo electrónico</b> para ingresar al sistema. La contraseña inicial se le entregará personalmente o por correo.
+        </div>
+        <div class="form-group">
+          <label class="fl">Contraseña inicial</label>
+          <input class="fi" type="password" placeholder="Mínimo 8 caracteres"/>
+        </div>
+        <div class="form-group">
+          <label class="fl">Confirmar contraseña</label>
+          <input class="fi" type="password" placeholder="Repite la contraseña"/>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <input type="checkbox" id="notify-email" style="accent-color:var(--red)"/>
+          <label for="notify-email" style="font-size:0.8rem;color:var(--text2)">Enviar credenciales al correo del docente</label>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-docente')">Cancelar</button>
+      <button class="btn btn-primary">💾 Guardar Docente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL ESTUDIANTE ═══════════ -->
+<div class="modal-overlay" id="modal-estudiante">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-estudiante-title">Nuevo Estudiante</h3>
+      <button class="modal-close" onclick="closeModal('modal-estudiante')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="fl">Nombres</label><input class="fi" type="text" placeholder="Ej: Valentina"/></div>
+        <div class="form-group"><label class="fl">Apellidos</label><input class="fi" type="text" placeholder="Ej: Torres"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="fl">Cédula (usuario de acceso)</label><input class="fi" type="text" placeholder="1750123456"/></div>
+        <div class="form-group"><label class="fl">Fecha de nacimiento</label><input class="fi" type="date"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="fl">Curso</label>
+          <select class="fi"><option>8vo "A"</option><option>8vo "B"</option><option>9no "A"</option><option>10mo "A"</option><option>1ro BGU</option><option>2do BGU</option><option>3ro BGU</option></select>
+        </div>
+        <div class="form-group"><label class="fl">Estado</label>
+          <select class="fi"><option>Activo</option><option>Inactivo</option><option>Retirado</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="fl">Nombre del representante</label><input class="fi" type="text" placeholder="Nombre completo"/></div>
+        <div class="form-group"><label class="fl">Teléfono del representante</label><input class="fi" type="text" placeholder="09XXXXXXXX"/></div>
+      </div>
+      <div class="form-group"><label class="fl">Contraseña inicial</label>
+        <input class="fi" type="text" placeholder="Por defecto: la cédula del estudiante" value=""/>
+        <small style="color:var(--text3);font-size:0.68rem;margin-top:3px">Si se deja vacío, se usará la cédula como contraseña</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-estudiante')">Cancelar</button>
+      <button class="btn btn-primary">💾 Guardar Estudiante</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── DATE ─── */
+(function(){
+  const d = new Date();
+  const opts = {weekday:'long',year:'numeric',month:'long',day:'numeric'};
+  document.getElementById('topbar-date').textContent = d.toLocaleDateString('es-EC',opts);
+})();
+
+/* ─── NAVIGATION ─── */
+function showSection(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if (el) el.classList.add('active');
+  const titles = {
+    dashboard:'Dashboard', docentes:'Docentes', estudiantes:'Estudiantes',
+    calificaciones:'Calificaciones', noticias:'Noticias', cursos:'Cursos & Materias',
+    asistencia:'Asistencia', 'control-notas':'Control de Notas'
+  };
+  document.getElementById('page-title').textContent = titles[id] || id;
+  document.getElementById('breadcrumb-current').textContent = titles[id] || id;
+  // close sidebar on mobile
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+/* ─── MODAL TABS ─── */
+function switchModalTab(tabId, btn) {
+  document.querySelectorAll('.modal-tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).style.display = 'block';
+  btn.classList.add('active');
+}
+
+/* ─── BUILD ASSIGNMENT MATRIX ─── */
+(function(){
+  const materias = ['Matemáticas','Lengua y Literatura','Ciencias Naturales','Historia y CCSS','Inglés','Robótica / Tecnología','Ed. Física','Emprendimiento'];
+  const tbody = document.getElementById('matrix-tbody');
+  if (!tbody) return;
+  materias.forEach((mat, mi) => {
+    const tr = document.createElement('tr');
+    let html = `<td class="subject-name">${mat}</td>`;
+    for (let ci = 0; ci < 7; ci++) {
+      html += `<td><input type="checkbox" class="matrix-cb"/></td>`;
+    }
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  });
+})();
+
+/* ─── CONTROL DE NOTAS ─── */
+function masterToggle(trim, cb) {
+  document.querySelectorAll('.cb-'+trim).forEach(c => { c.checked = cb.checked; });
+  updateTrimBadge(trim);
+}
+function updateTrimBadge(trim) {
+  const cbs   = document.querySelectorAll('.cb-'+trim);
+  const total  = cbs.length;
+  const active = [...cbs].filter(c => c.checked).length;
+  const badge  = document.getElementById('badge-'+trim);
+  const card   = document.getElementById('card-'+trim);
+  if (active === 0) {
+    badge.textContent = 'CERRADO'; badge.className = 'trim-badge closed';
+    card.classList.remove('active-trim');
+  } else if (active === total) {
+    badge.textContent = 'ABIERTO'; badge.className = 'trim-badge open';
+    card.classList.add('active-trim');
+  } else {
+    badge.textContent = active+'/'+total+' CURSOS'; badge.className = 'trim-badge future';
+    card.classList.add('active-trim');
+  }
+}
+function setAllToggles(state) {
+  ['t1','t2','t3'].forEach(trim => {
+    document.querySelectorAll('.cb-'+trim).forEach(c => c.checked = state);
+    const master = document.querySelector('#card-'+trim+' .master-toggle-row input[type=checkbox]');
+    if (master) master.checked = state;
+    updateTrimBadge(trim);
+  });
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* ─── MODAL ─── */
+function openModal(id, title) {
+  document.getElementById(id).classList.add('open');
+  const t = document.getElementById(id+'-title');
+  if (t) t.textContent = title;
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+/* ─── FILTER BY CURSO ─── */
+function filterByCurso(val) {
+  const tbl = document.getElementById('estudiantes-table');
+  if (!tbl) return;
+  tbl.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = (!val || row.textContent.includes(val)) ? '' : 'none';
+  });
+}
+
+/* ─── TABLE FILTER ─── */
+function filterTable(tableId, q) {
+  const tbl = document.getElementById(tableId);
+  if (!tbl) return;
+  q = q.toLowerCase();
+  tbl.querySelectorAll('tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+/* ─── GRADES DATA ─── */
+const students = [
+  ['Valentina Torres','8vo A'],[' Santiago Cárdenas','8vo A'],['Isabella Ramírez','8vo A'],
+  ['Diego Molina','8vo A'],['Ariana Vargas','8vo A'],['Mateo Herrera','8vo A'],
+  ['Camila Jiménez','8vo A'],['Sebastián Mora','8vo A'],['Lucía Paredes','8vo A'],
+  ['Emilio Suárez','8vo A'],['Valeria Castro','8vo A'],['Andrés Benítez','8vo A'],
+  ['Sofía Ríos','8vo A'],['Nicolás León','8vo A'],['Daniela Flores','8vo A'],['Tomás Aguirre','8vo A']
+];
+
+function randGrade(min=5.5, max=10){
+  return +(min + Math.random()*(max-min)).toFixed(2);
+}
+function gradeClass(g){
+  if(!g) return 'grade-empty';
+  if(g >= 7) return 'grade-pass';
+  if(g >= 5) return 'grade-sup';
+  return 'grade-fail';
+}
+
+let currentTrimestre = 1;
+
+function renderGrades(){
+  const tbody = document.getElementById('grades-tbody');
+  tbody.innerHTML = '';
+  students.forEach((s,i) => {
+    const grades = [
+      randGrade(5,10), randGrade(5,10), randGrade(5,10), randGrade(5,10),
+      randGrade(5,10), randGrade(5,10), randGrade(5,10)
+    ];
+    const avg = +(grades.reduce((a,b)=>a+b,0)/grades.length).toFixed(2);
+    const approved = avg >= 7;
+    const initials = s[0].trim().split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const colors = ['red','gold','dark'];
+    const col = colors[i%3];
+    tbody.innerHTML += `
+      <tr>
+        <td style="color:var(--text3);font-size:0.78rem">${i+1}</td>
+        <td><div class="avatar-cell"><div class="mini-avatar ${col}">${initials}</div><div class="cell-name">${s[0].trim()}</div></div></td>
+        ${grades.map(g=>`<td class="grade-cell"><span class="${gradeClass(g)}">${g}</span></td>`).join('')}
+        <td class="final-cell ${approved?'grade-pass':'grade-sup'}">${avg}
+          ${approved
+            ? '<span class="approved-tag">OK</span>'
+            : '<span class="sup-tag">SUPLETORIO</span>'}
+        </td>
+        <td>${approved
+          ? '<span class="badge badge-green">Aprobado</span>'
+          : '<span class="badge badge-gold">Supletorio</span>'}</td>
+      </tr>`;
+  });
+}
+renderGrades();
+
+function setTrimestre(n, btn){
+  currentTrimestre = n;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrades();
+  const labels = {0:'Vista General',1:'Trimestre 1',2:'Trimestre 2',3:'Trimestre 3'};
+  document.getElementById('grade-summary').innerHTML =
+    `Curso: <b>8vo "A"</b> — ${labels[n]} — ${students.length} estudiantes`;
+}
+
+/* ─── EXPORT PDF ─── */
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+
+  // Header
+  doc.setFillColor(30, 30, 46);
+  doc.rect(0, 0, 297, 28, 'F');
+  doc.setTextColor(240, 201, 106);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.text('COLEGIO PARTICULAR MIXTO "CHARLES BABBAGE"', 148, 10, {align:'center'});
+  doc.setFontSize(10);
+  doc.setTextColor(200,180,120);
+  doc.text('Registro de Calificaciones — ' + (currentTrimestre===0?'Vista General':'Trimestre '+currentTrimestre), 148, 18, {align:'center'});
+  doc.setFontSize(8);
+  doc.setTextColor(150,140,120);
+  doc.text('Sangolquí, Rumiñahui — Período Lectivo 2025–2026', 148, 24, {align:'center'});
+
+  // Table
+  const rows = [];
+  document.querySelectorAll('#grades-tbody tr').forEach((tr,i) => {
+    const cells = tr.querySelectorAll('td');
+    rows.push([
+      i+1,
+      cells[1].querySelector('.cell-name')?.textContent?.trim() || '',
+      cells[2].textContent.trim(), cells[3].textContent.trim(),
+      cells[4].textContent.trim(), cells[5].textContent.trim(),
+      cells[6].textContent.trim(), cells[7].textContent.trim(),
+      cells[8].textContent.trim(), cells[9].textContent.trim(),
+      cells[10].textContent.trim()
+    ]);
+  });
+
+  doc.autoTable({
+    startY: 32,
+    head:[['#','Estudiante','Matemáticas','Lengua','CC.NN.','Historia','Inglés','Robótica','Ed. Física','Promedio','Estado']],
+    body: rows,
+    styles: { fontSize:8, cellPadding:3, font:'helvetica' },
+    headStyles: { fillColor:[155,22,38], textColor:255, fontStyle:'bold', halign:'center' },
+    bodyStyles: { textColor:[26,26,46] },
+    alternateRowStyles: { fillColor:[247,246,243] },
+    columnStyles: {
+      0:{halign:'center',cellWidth:8},
+      2:{halign:'center'},3:{halign:'center'},4:{halign:'center'},
+      5:{halign:'center'},6:{halign:'center'},7:{halign:'center'},
+      8:{halign:'center'},9:{halign:'center',fontStyle:'bold'},10:{halign:'center'}
+    },
+    didParseCell(data){
+      if(data.section==='body'){
+        const v = parseFloat(data.cell.raw);
+        if(!isNaN(v)){
+          if(v < 7) data.cell.styles.textColor = [196,130,0];
+          else data.cell.styles.textColor = [22,120,60];
+        }
+              if(data.column.index===10){
+          const txt = String(data.cell.raw);
+          if(txt.includes('Supletorio')) data.cell.styles.textColor=[180,100,0];
+          else data.cell.styles.textColor=[22,120,60];
+        }
+      }
+    },
+    foot:[['','','','','','','','','Leyenda: Aprobado >= 7.00  |  Supletorio < 7.00','','']],
+    footStyles:{ fillColor:[240,230,210], textColor:[100,80,40], fontSize:7 }
+  });
+
+  const pageH = doc.internal.pageSize.height;
+  doc.setFontSize(7); doc.setTextColor(160,150,140);
+  doc.text('Generado: ' + new Date().toLocaleString('es-EC') + '  |  Sistema Academico Charles Babbage', 148, pageH-6, {align:'center'});
+  doc.save('calificaciones_T' + currentTrimestre + '_charlesbabbage.pdf');
+}
+</script>
+</body>
+</html>
