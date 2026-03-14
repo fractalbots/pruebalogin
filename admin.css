@@ -176,26 +176,30 @@ html, body { height:100%; font-family:'DM Sans', sans-serif; background:var(--bg
   margin-bottom: 28px;
 }
 .stat-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(247,246,243,0.95));
+  border: 1px solid rgba(226,223,216,0.5);
+  border-radius: 20px;
+  padding: 24px 26px;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
 }
-.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow2); }
+.stat-card:hover { 
+  transform: translateY(-4px); 
+  box-shadow: 0 16px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+}
 .stat-card::before {
   content:''; position:absolute; top:0;right:0;
   width:60px; height:60px;
-  border-radius: 0 14px 0 60px;
-  opacity:0.08;
+  border-radius: 0 20px 0 60px;
+  opacity:0.1;
 }
-.stat-card.red::before { background:var(--red); }
-.stat-card.gold::before { background:var(--gold); }
-.stat-card.green::before { background:#16a34a; }
-.stat-card.blue::before { background:#2563eb; }
+.stat-card.red::before { background: linear-gradient(135deg, var(--red), var(--red2)); }
+.stat-card.gold::before { background: linear-gradient(135deg, var(--gold), var(--gold2)); }
+.stat-card.green::before { background: linear-gradient(135deg, #16a34a, #22c55e); }
+.stat-card.blue::before { background: linear-gradient(135deg, #2563eb, #3b82f6); }
 .stat-card .stat-icon { font-size:1.8rem; margin-bottom:10px; }
 .stat-card .stat-num {
   font-family:'Cinzel',serif; font-size:2rem; font-weight:700;
@@ -210,8 +214,17 @@ html, body { height:100%; font-family:'DM Sans', sans-serif; background:var(--bg
 
 .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; }
 .card {
-  background:var(--white); border:1px solid var(--border);
-  border-radius:14px; padding:22px; box-shadow:var(--shadow);
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(247,246,243,0.9));
+  border: 1px solid rgba(226,223,216,0.3);
+  border-radius: 20px; 
+  padding: 24px; 
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.9);
 }
 .card-header {
   display:flex; align-items:center; justify-content:space-between;
@@ -231,11 +244,17 @@ html, body { height:100%; font-family:'DM Sans', sans-serif; background:var(--bg
 .activity-list { display:flex; flex-direction:column; gap:12px; }
 .activity-item {
   display:flex; align-items:center; gap:12px;
-  padding:10px 12px; border-radius:10px;
-  background:var(--bg); border:1px solid var(--border);
-  transition:background 0.2s;
+  padding:12px 14px; border-radius:12px;
+  background: linear-gradient(135deg, rgba(247,246,243,0.8), rgba(238,236,234,0.9));
+  border: 1px solid rgba(226,223,216,0.4);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
-.activity-item:hover { background:var(--bg2); }
+.activity-item:hover { 
+  background: linear-gradient(135deg, rgba(238,236,234,0.9), rgba(247,246,243,1));
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
 .act-icon {
   width:36px; height:36px; border-radius:10px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center; font-size:1rem;
