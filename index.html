@@ -1,11 +1,264 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="refresh" content="0; url=login.html"/>
-<title>Sistema Académico — Charles Babbage</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Charles Babbage — Acceso</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="index.css"/>
 </head>
 <body>
-<script>window.location.replace('login.html');</script>
-</body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="shell">
+
+  <!-- ═══════════════════════════════ LEFT PANEL ═══ -->
+  <section class="left">
+
+    <div>
+      <!-- School Header -->
+      <div class="school-header">
+        <div class="shield-wrap">
+          <!-- Using SVG placeholder shield since we can't embed the actual logo file -->
+          <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#c9a84c"/>
+                <stop offset="50%" stop-color="#f0c96a"/>
+                <stop offset="100%" stop-color="#b8922a"/>
+              </linearGradient>
+              <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#9b1626"/>
+                <stop offset="100%" stop-color="#c41e36"/>
+              </linearGradient>
+            </defs>
+            <path d="M50 2 L95 20 L95 65 Q95 95 50 118 Q5 95 5 65 L5 20 Z" fill="url(#sg)" stroke="#c9a84c" stroke-width="1.5"/>
+            <path d="M50 8 L89 24 L89 64 Q89 91 50 112 Q11 91 11 64 L11 24 Z" fill="#0d0d0d"/>
+            <!-- diagonal split -->
+            <path d="M11 24 L89 80 L89 64 L11 55 Z" fill="url(#rg)" opacity="0.7"/>
+            <path d="M11 55 L89 80 L89 91 Q72 104 50 112 Q28 104 11 91 Z" fill="url(#rg)"/>
+            <!-- letters -->
+            <text x="28" y="58" font-family="serif" font-size="14" fill="#f0c96a" font-style="italic">CH</text>
+            <text x="56" y="45" font-family="serif" font-size="12" fill="#f0c96a" font-style="italic">B</text>
+            <!-- feather -->
+            <path d="M42 72 Q48 60 55 78 Q50 70 45 82 Q43 77 42 72Z" fill="#fff" opacity="0.85"/>
+            <!-- book top right -->
+            <rect x="62" y="24" width="16" height="12" rx="1" fill="none" stroke="#f0c96a" stroke-width="1.2" opacity="0.8"/>
+            <line x1="70" y1="24" x2="70" y2="36" stroke="#f0c96a" stroke-width="1" opacity="0.8"/>
+          </svg>
+        </div>
+        <div class="school-title">
+          <span>Colegio Particular Mixto</span>
+          <h1>Charles Babbage</h1>
+        </div>
+      </div>
+
+      <!-- Motto -->
+      <div class="motto">
+        <div class="motto-line"></div>
+        <span class="motto-text">Dios, Patria y Libertad</span>
+        <div class="motto-line"></div>
+      </div>
+
+      <!-- News Section -->
+      <div class="news-section">
+        <div class="news-label">
+          <div class="dot"></div>
+          <span>Noticias &amp; Novedades</span>
+        </div>
+
+        <div class="news-scroll-wrap">
+          <div class="news-cards" id="news-cards">
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">📢</span>Comunicado
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Inicio del Año Lectivo 2025–2026</h3>
+              <p>Las actividades académicas se reanudan con toda la energía y el compromiso que caracteriza a nuestra institución.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🏆</span>Logros
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Reconocimiento en Robótica STEAM</h3>
+              <p>Nuestros estudiantes obtuvieron el primer lugar en el concurso provincial de robótica e innovación tecnológica.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">📅</span>Evento
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Desfile Cívico — Día del Civismo</h3>
+              <p>Este viernes se realizará la formación y desfile cívico con la participación de todos los niveles.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎓</span>Académico
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Mar 2026</span>
+              </div>
+              <h3>Proceso de Matrículas Abierto</h3>
+              <p>Desde el 10 de marzo se encuentran habilitadas las inscripciones para el nuevo período académico.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🤝</span>Convenio
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Nuevo Convenio con Club Naval de la Marina</h3>
+              <p>Se renueva el acuerdo de uso de instalaciones deportivas para reforzar la formación física de los estudiantes.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎨</span>Cultura
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Ene 2026</span>
+              </div>
+              <h3>Concurso Interno de Danza 2026</h3>
+              <p>Inscripciones abiertas para el concurso anual de danza. Participan todos los cursos del bachillerato.</p>
+            </div>
+
+            <div class="news-card">
+              <div class="news-badge">
+                <span class="icon">🎙️</span>Podcast
+                <span style="margin-left:auto;color:rgba(255,255,255,0.22);font-size:0.6rem;">Feb 2026</span>
+              </div>
+              <h3>Lanzamiento: NOTI CHARLES</h3>
+              <p>¡Llega nuestro primer podcast institucional! Noticias, entrevistas y más desde la comunidad Charles Babbage.</p>
+            </div>
+
+          </div>
+
+          <!-- Scroll hint -->
+          <div class="scroll-hint" id="scroll-hint">
+            <span>más</span>
+            <svg width="14" height="8" viewBox="0 0 14 8" fill="none">
+              <path d="M1 1L7 7L13 1" stroke="#d4a942" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="left-footer">
+      <div class="info-item">
+        <span>Ubicación</span>
+        <span>Sangolquí, Rumiñahui</span>
+      </div>
+      <div class="info-item">
+        <span>Teléfono</span>
+        <span>+593 97 927 9532</span>
+      </div>
+      <div class="steam-badges">
+        <span class="steam-badge">STEAM</span>
+        <span class="steam-badge">Inglés</span>
+        <span class="steam-badge">Robótica</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═════════════════════════════ DIVIDER ══════════ -->
+  <div class="divider"></div>
+
+  <!-- ══════════════════════════════ RIGHT PANEL ════ -->
+  <section class="right">
+    <div class="scan-effect"></div>
+    <div class="login-box">
+
+      <!-- Shield -->
+      <div class="login-shield">
+        <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg" width="72" height="72">
+          <defs>
+            <linearGradient id="sg2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#c9a84c"/><stop offset="50%" stop-color="#f0c96a"/><stop offset="100%" stop-color="#b8922a"/>
+            </linearGradient>
+            <linearGradient id="rg2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#9b1626"/><stop offset="100%" stop-color="#c41e36"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 2 L95 20 L95 65 Q95 95 50 118 Q5 95 5 65 L5 20 Z" fill="url(#sg2)" stroke="#c9a84c" stroke-width="1.5"/>
+          <path d="M50 8 L89 24 L89 64 Q89 91 50 112 Q11 91 11 64 L11 24 Z" fill="#0d0d0d"/>
+          <path d="M11 24 L89 80 L89 64 L11 55 Z" fill="url(#rg2)" opacity="0.7"/>
+          <path d="M11 55 L89 80 L89 91 Q72 104 50 112 Q28 104 11 91 Z" fill="url(#rg2)"/>
+          <text x="28" y="58" font-family="serif" font-size="14" fill="#f0c96a" font-style="italic">CH</text>
+          <text x="56" y="45" font-family="serif" font-size="12" fill="#f0c96a" font-style="italic">B</text>
+          <path d="M42 72 Q48 60 55 78 Q50 70 45 82 Q43 77 42 72Z" fill="#fff" opacity="0.85"/>
+          <rect x="62" y="24" width="16" height="12" rx="1" fill="none" stroke="#f0c96a" stroke-width="1.2" opacity="0.8"/>
+          <line x1="70" y1="24" x2="70" y2="36" stroke="#f0c96a" stroke-width="1" opacity="0.8"/>
+        </svg>
+      </div>
+
+      <!-- Title -->
+      <div class="login-title">
+        <h2>Acceso al Sistema</h2>
+        <p>Sistema Académico Institucional</p>
+      </div>
+
+      <!-- Role Selector -->
+      <div class="role-selector">
+        <button class="role-btn active" onclick="setRole('estudiante',this)" id="r-est">
+          <span class="r-icon">🎓</span>Estudiante
+        </button>
+        <button class="role-btn" onclick="setRole('profesor',this)" id="r-prof">
+          <span class="r-icon">📚</span>Profesor
+        </button>
+        <button class="role-btn" onclick="setRole('admin',this)" id="r-admin">
+          <span class="r-icon">⚙️</span>Admin
+        </button>
+      </div>
+
+      <!-- Hint -->
+      <div class="user-hint" id="user-hint">
+        💡 Estudiantes: ingresa tu <span>número de cédula</span> como usuario
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" id="user-label">Usuario / Cédula</label>
+          <div class="input-wrap">
+            <span class="input-icon" id="user-icon">🪪</span>
+            <input class="form-input" type="text" id="username" placeholder="Ingresa tu cédula" autocomplete="username" required/>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input class="form-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required/>
+            <button type="button" class="toggle-pass" onclick="togglePass()" id="toggle-btn">👁️</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="login-btn">
+          Ingresar
+        </button>
+      </form>
+
+      <div class="gold-line"></div>
+
+      <div class="login-footer">
+        <a href="#">¿Olvidaste tu contraseña?</a>
+        <br/><br/>
+        <a href="https://colegiocharlesbabbage.com" target="_blank">🌐 colegiocharlesbabbage.com</a>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<script src="index.js"></script>
+
 </html>
